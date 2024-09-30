@@ -7,4 +7,5 @@ resource "yandex_vpc_subnet" "subnet-a-zone" {
   zone           = var.zone_of_availability
   network_id     = yandex_vpc_network.my-network.id
   v4_cidr_blocks = var.v4_cidr_blocks
+  labels         = var.labels
 }

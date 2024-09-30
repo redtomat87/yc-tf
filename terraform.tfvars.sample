@@ -1,0 +1,27 @@
+# Путь до вашего публичного SSH-ключа (например ~/.ssh/id_rsa.pub)
+ssh_open_key_file = "~/.ssh/id_rsa.pub"
+
+# Лейблы для виртуальных машин и дисков в формате карты (map)
+labels = {
+  "otus"       = "angie",
+  "user_email" = "myname_at_mail_ru"
+}
+
+# Имена для виртуальных машин, записанные как список строк
+# Если vm = ["angie", "angie-second"], то будет создано 2 ВМ с именами angie и angie-second
+vm                 = ["angie"]
+
+# Конфигурация дисков для ВМ
+vm_boot_disk_type        = "network-hdd"  # Тип диска у ВМ
+vm_boot_disk_size        = 15             # Размер диска в GB
+vm_boot_disk_image       = "f2e0hdv249kssjmokdkj"  # ID образа загрузочного диска, по умолчанию Ubuntu 24.04
+vm_boot_disk_auto_delete = true           # Удалять ли диск при удалении ВМ
+
+# Конфигурация ресурсов для ВМ
+vm_cores                 = 2              # Количество ядер
+vm_memory                = 2              # Количество оперативной памяти в GB
+vm_core_fraction         = 20             # Гарантированная доля vCPU (от 0 до 100%)
+vm_preemptible           = true           # Прерываемая ли ВМ (preemptible)
+
+# Зона доступности в Yandex Cloud
+zone_of_availability      = "ru-central1-a"

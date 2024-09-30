@@ -3,6 +3,22 @@ variable "ssh_open_key_file" {
   sensitive = true
 }
 
+variable "v4_cidr_blocks" {
+  type    = list(any)
+  default = ["192.168.10.0/24"]
+}
+
+
+variable "network_name" {
+  type    = string
+  default = "default"
+}
+
+variable "subnet_name" {
+  type    = string
+  default = "my-subnet"
+}
+
 variable "labels" {
   type      = map(string)
   sensitive = true
@@ -34,6 +50,10 @@ variable "vm_memory" {
 }
 
 variable "vm_preemptible" {
+  type = bool
+}
+
+variable "vm_nat" {
   type = bool
 }
 

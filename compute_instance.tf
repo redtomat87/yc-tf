@@ -17,7 +17,7 @@ resource "yandex_compute_instance" "vm" {
 
   network_interface {
     subnet_id = yandex_vpc_subnet.subnet-a-zone.id
-    nat       = true
+    nat       = var.vm_nat
   }
 
   metadata = {
@@ -25,7 +25,7 @@ resource "yandex_compute_instance" "vm" {
   }
 
   scheduling_policy {
-    preemptible = true
+    preemptible = var.vm_preemptible
   }
 }
 

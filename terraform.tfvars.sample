@@ -1,6 +1,11 @@
 # Путь до вашего публичного SSH-ключа (например ~/.ssh/id_rsa.pub)
 ssh_open_key_file = "~/.ssh/id_rsa.pub"
 
+# Конфигурация сети
+network_name   = "default"               # Имя сети, которая будет создана в Yandex Cloud. 
+subnet_name    = "my-subnet"             # Имя подсети, которая будет создана внутри сети.
+v4_cidr_blocks = ["192.168.10.0/24"]     # Список блоков адресов CIDR (например, ["192.168.10.0/24"]),которые будут использоваться для определения диапазона IP-адресов в подсети.
+
 # Лейблы для виртуальных машин и дисков в формате карты (map)
 labels = {
   "otus"       = "angie",
@@ -23,6 +28,7 @@ vm_cores                 = 2              # Количество ядер
 vm_memory                = 2              # Количество оперативной памяти в GB
 vm_core_fraction         = 20             # Гарантированная доля vCPU (от 5 до 100%)
 vm_preemptible           = true           # Прерываемая ли ВМ (preemptible)
+vm_nat                   = true           # Следует ли включить NAT для ВМ
 
 # Зона доступности в Yandex Cloud
 zone_of_availability      = "ru-central1-a"

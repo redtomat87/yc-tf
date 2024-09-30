@@ -20,7 +20,7 @@ vm_boot_disk_auto_delete = true           # Удалять ли диск при 
 # Конфигурация ресурсов для ВМ
 vm_cores                 = 2              # Количество ядер
 vm_memory                = 2              # Количество оперативной памяти в GB
-vm_core_fraction         = 20             # Гарантированная доля vCPU (от 0 до 100%)
+vm_core_fraction         = 20             # Гарантированная доля vCPU (от 5 до 100%)
 vm_preemptible           = true           # Прерываемая ли ВМ (preemptible)
 
 # Зона доступности в Yandex Cloud

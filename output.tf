@@ -13,7 +13,6 @@ output "external_ip_addresses_with_names" {
   }
 }
 
-
 output "fqdn_with_internal_ip_addresses" {
   value = {
     for instance in yandex_compute_instance.vm :

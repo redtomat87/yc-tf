@@ -39,3 +39,4 @@ terraform.rc
 #Ignore custom files
 key.json
 hosts.ini
+hosts.yaml

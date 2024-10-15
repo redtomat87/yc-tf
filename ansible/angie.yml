@@ -7,7 +7,7 @@
   tags:
     - angie
 
-- name: Install Angie Pro by docker
+- name: Install Angie in docker
   hosts: all
   roles:
     - role: web_server

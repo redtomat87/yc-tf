@@ -1,9 +1,2 @@
 - name: 'INSTALL web_server'
-  ansible.builtin.import_tasks: "web_server.yml"
-  tags:
-    - 'angie'
-
-- name: 'INSTALL web_server_docker'
-  ansible.builtin.import_tasks: "web_server_docker.yml"
-  tags:
-    - 'angie_docker'
+  ansible.builtin.import_tasks: "{{ installation_type }}.yml"

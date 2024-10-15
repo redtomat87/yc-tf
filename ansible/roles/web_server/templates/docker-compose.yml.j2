@@ -6,7 +6,7 @@ services:
     container_name: angie
     volumes:
       - /var/www:/usr/share/angie/html:ro
-      - /etc/angie/angie.conf:/etc/angie/angie.conf:ro
+      - /opt/angie/angie.conf:/etc/angie/angie.conf:ro
     ports:
       - "8080:80"
       - "443:443"

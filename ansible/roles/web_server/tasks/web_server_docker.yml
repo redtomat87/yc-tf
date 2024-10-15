@@ -51,6 +51,14 @@
     dest: /opt/angie/docker-compose.yml
     mode: '0644'
 
+- name: Copying angie.conf
+  template:
+    src: angie.conf.j2
+    dest: /opt/angie/angie.conf
+    mode: '0644'
+  tags:
+    - 'angie'
+
 - name: Run Docker Compose
   command: docker compose -f /opt/angie/docker-compose.yml up -d
   args:

@@ -2,10 +2,16 @@
   hosts: all
   roles:
     - role: web_server
-      tags: angie
+      vars:
+        installation_type: web_server
+  tags:
+    - angie
 
 - name: Install Angie Pro by docker
   hosts: all
   roles:
     - role: web_server
-      tags: angie_docker
+      vars:
+        installation_type: web_server_docker
+  tags:
+    - angie-docker

@@ -13,3 +13,12 @@ terraform plan
 terraform apply
 ```
 Положите файл сертификата и ключа в директорию ansible/roles/web_server/files
+
+Для установки используйте ansible, чтобы запустить контейнер используйте
+```
+ansible-playbook -v angie.yml --tags angie-docker
+```
+Для того чтобы установить из репозиториев Angie-pro
+```
+ansible-playbook -v angie.yml --tags angie
+```

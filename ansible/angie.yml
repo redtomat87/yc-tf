@@ -1,0 +1,11 @@
+- name: Install Angie Pro
+  hosts: all
+  roles:
+    - role: web_server
+      tags: angie
+
+- name: Install Angie Pro by docker
+  hosts: all
+  roles:
+    - role: web_server
+      tags: angie_docker

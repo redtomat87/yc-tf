@@ -1,0 +1,128 @@
+- name: Creating cert dir
+  file:
+    path: /etc/ssl/angie/
+    state: directory
+    mode: '755'
+    owner: _apt
+    group: nogroup
+  tags:
+    - 'angie'
+
+- name: Copy Angie certificates and key
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: _apt
+    group: nogroup
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "files/angie-repo.crt", dest: "/etc/ssl/angie/angie-repo.crt", mode: "0600" }
+    - { src: "files/angie-repo.key", dest: "/etc/ssl/angie/angie-repo.key", mode: "0600" }
+  tags:
+    - 'angie'
+
+
+- name: Apt cache update
+  apt:
+    update_cache: true
+  tags:
+    - 'angie'
+
+- name: Installing auxiliary packages
+  apt:
+    name:
+      - apt-transport-https
+      - lsb-release
+      - ca-certificates
+      - curl
+      - gnupg2
+    state: present
+  tags:
+    - 'angie'
+
+- name: Downloading Angie repo key
+  get_url:
+    url: https://angie.software/keys/angie-signing.gpg
+    dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
+  tags:
+    - 'angie'
+
+- name: Setup Angie PRO dir
+  shell: |
+    . /etc/os-release && echo "deb https://download.angie.software/angie-pro/$ID/$VERSION_ID $VERSION_CODENAME main" | tee /etc/apt/sources.list.d/angie.list > /dev/null
+  args:
+    executable: /bin/bash
+  tags:
+    - 'angie'
+
+- name: Check Angie sources list content
+  command: cat /etc/apt/sources.list.d/angie.list
+  register: angie_sources
+  changed_when: false
+  tags:
+    - 'angie'
+
+- name: Display Angie sources list content
+  debug:
+    var: angie_sources.stdout
+  tags:
+    - 'angie'
+
+
+- name: Configuring Angie repo
+  copy:
+    dest: /etc/apt/apt.conf.d/90download-angie
+    content: |
+      Acquire::https::download.angie.software::Verify-Peer "true";
+      Acquire::https::download.angie.software::Verify-Host "true";
+      Acquire::https::download.angie.software::SslCert     "/etc/ssl/angie/angie-repo.crt";
+      Acquire::https::download.angie.software::SslKey      "/etc/ssl/angie/angie-repo.key";
+  tags:
+    - 'angie'
+
+- name: Apt cache update
+  apt:
+    update_cache: true
+  register: apt_update_result
+  ignore_errors: true
+  tags:
+    - 'angie'
+
+- name: Display apt update error if any
+  debug:
+    var: apt_update_result
+  when: apt_update_result is failed
+  tags:
+    - 'angie'
+
+- name: Installing angie-pro
+  apt:
+    name: angie-pro
+    state: present
+  tags:
+    - 'angie'
+
+- name: Installing extra modules
+  apt:
+    name:
+      - angie-pro-module-zstd
+      - angie-pro-module-brotli
+    state: present
+  tags:
+    - 'angie'
+
+- name: Copying angie.conf
+  template:
+    src: angie.conf.j2
+    dest: "{{ angie_conf_dest }}"
+    mode: '0644'
+  tags:
+    - 'angie'
+
+- name: Restart angie
+  systemd:
+    name: angie
+    state: restarted
+    enabled: true
+  tags:
+    - 'angie'

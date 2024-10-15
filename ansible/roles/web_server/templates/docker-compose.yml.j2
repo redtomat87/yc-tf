@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  angie:
+    image: docker.angie.software/angie:1.7.0
+    container_name: angie
+    volumes:
+      - /var/www:/usr/share/angie/html:ro
+      - /etc/angie/angie.conf:/etc/angie/angie.conf:ro
+    ports:
+      - "8080:80"
+      - "443:443"
+    networks:
+      - balancer_network
+    restart: always
+
+networks:
+  balancer_network:
+    external: true

@@ -7,7 +7,7 @@ ansible_user=ubuntu
 ${join("\n", [for instance in yandex_compute_instance.vm :
 "${instance.name} ansible_host=${instance.network_interface.0.nat_ip_address}"])}
 EOF
-filename = "${path.module}/hosts.ini"
+filename = "${path.module}/ansible/inventories/hosts.ini"
 }
 
 resource "local_file" "ansible_inventory_yaml" {
@@ -22,5 +22,5 @@ resource "local_file" "ansible_inventory_yaml" {
       }
     }
   })
-  filename = "${path.module}/hosts.yaml"
+  filename = "${path.module}/ansible/inventories/hosts.yaml"
 }

@@ -40,3 +40,6 @@ terraform.rc
 key.json
 hosts.ini
 hosts.yaml
+*.crt
+*.key
+.vscode

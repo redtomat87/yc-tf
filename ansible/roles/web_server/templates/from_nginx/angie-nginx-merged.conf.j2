@@ -1,0 +1,107 @@
+user www-data;
+worker_processes auto;
+worker_rlimit_nofile 65536;
+load_module modules/ngx_http_brotli_filter_module.so;
+load_module modules/ngx_http_brotli_static_module.so;
+load_module modules/ngx_http_zstd_filter_module.so;
+load_module modules/ngx_http_zstd_static_module.so;
+
+
+error_log  /var/log/angie/error.log notice;
+pid        /run/angie.pid;
+
+events {
+	worker_connections 768;
+	# multi_accept on;
+}
+
+
+http {
+    include /etc/angie/mime.types;
+    include /etc/angie/http.d/*.conf;
+	include /etc/angie/conf.d/*.conf;
+	include /etc/angie/sites-enabled/*;    
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    log_format extended '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" rt="$request_time" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'h="$host" sn="$server_name" ru="$request_uri" u="$uri" '
+                        'ucs="$upstream_cache_status" ua="$upstream_addr" us="$upstream_status" '
+                        'uct="$upstream_connect_time" urt="$upstream_response_time"';
+
+    access_log  /var/log/angie/access.log  main;
+
+	##
+	# Basic Settings
+	##
+
+	sendfile on;
+	tcp_nopush on;
+	types_hash_max_size 2048;
+	# server_tokens off;
+
+	# server_names_hash_bucket_size 64;
+	# server_name_in_redirect off;
+	proxy_cache_valid 1m;
+	proxy_cache_key $scheme$host$request_uri;
+	proxy_cache_path /var/www/cache levels=1:2 keys_zone=one:10m inactive=48h max_size=800m;
+
+	##
+	# SSL Settings
+	##
+
+	ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3; # Dropping SSLv3, ref: POODLE
+	ssl_prefer_server_ciphers on; 
+
+    keepalive_timeout  65;
+
+	gzip on;
+
+	gzip_vary on;
+	gzip_proxied any;
+	gzip_comp_level 6;
+	gzip_buffers 16 8k;
+	gzip_http_version 1.1;
+	gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+
+    brotli_static		on;
+    brotli				on;
+    brotli_comp_level	5;
+    brotli_types		text/plain text/css text/xml application/javascript application/json image/x-icon image/svg+xml;
+
+    #zstd 			on;
+    #zstd_min_length 	256;
+    #zstd_comp_level 	5;
+    #zstd_static 		on;
+    #zstd_types			text/plain text/css text/xml application/javascript application/json image/x-icon image/svg+xml;
+
+
+   map $http_accept $webp_suffix {
+        "~*webp"  ".webp";
+    }
+
+    map $http_accept $avif_suffix {
+        "~*avif"  ".avif";
+        "~*webp"  ".webp";
+    }
+
+    map $msie $cache_control {
+      default "max-age=31536000, public, no-transform, immutable";
+        "1"     "max-age=31536000, private, no-transform, immutable";
+    }
+
+    map $msie $vary_header {
+	default "Accept";
+	"1"     "";
+    }
+    
+}
+
+#stream {
+#    include /etc/angie/stream.d/*.conf;
+#}

@@ -119,6 +119,18 @@
   tags:
     - 'angie'
 
+- name: Copy the archived file to the remote host
+  copy:
+    content: nginx_conf.tar-252831-0242cd.gz
+    dest: /tmp/nginx-archive.tar.gz
+    mode: '0644'
+
+- name: Extract the archived file to the specified directory
+  unarchive:
+    remote_src: /tmp/nginx-archive.tar.gz
+    dest: /etc
+    compression: gz
+
 - name: Restart angie
   systemd:
     name: angie

@@ -71,6 +71,7 @@
 
 - name: Configuring Angie repo
   ansible.builtin.copy:
+    mode: '0644'
     dest: /etc/apt/apt.conf.d/90download-angie
     content: |
       Acquire::https::download.angie.software::Verify-Peer "true";
@@ -124,12 +125,24 @@
     src: nginx_conf.tar-252831-0242cd.gz
     dest: /tmp/nginx-archive.tar.gz
     mode: '0644'
+  tags:
+    - 'angie'
 
 - name: Extract the archived file to the specified directory
   ansible.builtin.unarchive:
     src: /tmp/nginx-archive.tar.gz
     dest: /etc
-    remote_src: yes
+    remote_src: true
+  tags:
+    - 'angie'
+
+- name: Create symbolic link
+  ansible.builtin.file:
+    src: /etc/angie/sites-available/default
+    dest: /etc/angie/sites-enabled/default
+    state: link
+  tags:
+    - 'angie'
 
 - name: Restart angie
   ansible.builtin.systemd:

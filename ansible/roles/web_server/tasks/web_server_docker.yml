@@ -57,6 +57,7 @@
     dest: /opt/angie/angie.conf
     mode: '0644'
 
+
 - name: Run Docker Compose
   command: docker compose -f /opt/angie/docker-compose.yml up -d
   args:

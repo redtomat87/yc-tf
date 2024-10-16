@@ -1,5 +1,5 @@
 - name: Creating cert dir
-  file:
+  ansible.builtin.file:
     path: /etc/ssl/angie/
     state: directory
     mode: '755'
@@ -9,7 +9,7 @@
     - 'angie'
 
 - name: Copy Angie certificates and key
-  copy:
+  ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
     owner: _apt
@@ -23,13 +23,13 @@
 
 
 - name: Apt cache update
-  apt:
+  ansible.builtin.apt:
     update_cache: true
   tags:
     - 'angie'
 
 - name: Installing auxiliary packages
-  apt:
+  ansible.builtin.apt:
     name:
       - apt-transport-https
       - lsb-release
@@ -41,14 +41,14 @@
     - 'angie'
 
 - name: Downloading Angie repo key
-  get_url:
+  ansible.builtin.get_url:
     url: https://angie.software/keys/angie-signing.gpg
     dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
   tags:
     - 'angie'
 
 - name: Setup Angie PRO dir
-  shell: |
+  ansible.builtin.shell: |
     . /etc/os-release && echo "deb https://download.angie.software/angie-pro/$ID/$VERSION_ID $VERSION_CODENAME main" | tee /etc/apt/sources.list.d/angie.list > /dev/null
   args:
     executable: /bin/bash
@@ -56,21 +56,21 @@
     - 'angie'
 
 - name: Check Angie sources list content
-  command: cat /etc/apt/sources.list.d/angie.list
+  ansible.builtin.command: cat /etc/apt/sources.list.d/angie.list
   register: angie_sources
   changed_when: false
   tags:
     - 'angie'
 
 - name: Display Angie sources list content
-  debug:
+  ansible.builtin.debug:
     var: angie_sources.stdout
   tags:
     - 'angie'
 
 
 - name: Configuring Angie repo
-  copy:
+  ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/90download-angie
     content: |
       Acquire::https::download.angie.software::Verify-Peer "true";
@@ -81,7 +81,7 @@
     - 'angie'
 
 - name: Apt cache update
-  apt:
+  ansible.builtin.apt:
     update_cache: true
   register: apt_update_result
   ignore_errors: true
@@ -89,21 +89,21 @@
     - 'angie'
 
 - name: Display apt update error if any
-  debug:
+  ansible.builtin.debug:
     var: apt_update_result
   when: apt_update_result is failed
   tags:
     - 'angie'
 
 - name: Installing angie-pro
-  apt:
+  ansible.builtin.apt:
     name: angie-pro
     state: present
   tags:
     - 'angie'
 
 - name: Installing extra modules
-  apt:
+  ansible.builtin.apt:
     name:
       - angie-pro-module-zstd
       - angie-pro-module-brotli
@@ -112,7 +112,7 @@
     - 'angie'
 
 - name: Copying angie.conf
-  template:
+  ansible.builtin.template:
     src: angie.conf.j2
     dest: "{{ angie_conf_dest }}"
     mode: '0644'
@@ -120,7 +120,7 @@
     - 'angie'
 
 - name: Restart angie
-  systemd:
+  ansible.builtin.systemd:
     name: angie
     state: restarted
     enabled: true

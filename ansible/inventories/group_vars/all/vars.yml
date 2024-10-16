@@ -1,6 +1,5 @@
     angie_cert_src: "{{ playbook_dir }}/certs/angie-repo.crt"
     angie_key_src: "{{ playbook_dir }}/certs/angie-repo.key"
-    angie_conf_src: "{{ playbook_dir }}/config/angie.conf"
     angie_cert_dest: /etc/ssl/angie/angie-repo.crt
     angie_key_dest: /etc/ssl/angie/angie-repo.key
     angie_conf_dest: /etc/angie/angie.conf

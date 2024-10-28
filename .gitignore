@@ -43,3 +43,4 @@ hosts.yaml
 *.crt
 *.key
 .vscode
+*.zip

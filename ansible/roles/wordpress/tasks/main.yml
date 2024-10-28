@@ -1,0 +1,5 @@
+- name: 'INSTALL mysql'
+  ansible.builtin.import_tasks: mysql.yml
+
+- name: 'INSTALL wordpress'
+  ansible.builtin.import_tasks: "{{ installation_type }}.yml"

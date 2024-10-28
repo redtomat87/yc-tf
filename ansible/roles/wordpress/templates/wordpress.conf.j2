@@ -1,0 +1,47 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+
+    #add_header Strict-Transport-Security "max-age=63072000" always;
+
+    charset utf-8;
+
+    root /var/www/wordpress;
+    #root /var/www/html;
+    index index.html index.php;
+
+    location ~ /\. {
+		deny all;
+    }
+	 
+    location ~ ^/wp-content/cache { 
+		deny all;
+    }
+	 
+    location ~* /(?:uploads|files)/.*\.php$ {
+		deny all;
+    }
+
+    location / {
+		try_files $uri $uri/ /index.php?$args;
+		#try_files $uri =404;
+    }
+
+    location /wp-content {
+	add_header Cache-Control "max-age=31536000, public, no-transform, immutable";
+    }
+
+    location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
+	add_header Cache-Control "max-age=31536000, public, no-transform, immutable";
+    }
+
+    location ~ \.php$ {
+		# fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+		include fastcgi.conf;
+		fastcgi_intercept_errors on;
+		#fastcgi_pass 192.168.122.100:9000;
+		fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+		fastcgi_index index.php;
+    }
+}

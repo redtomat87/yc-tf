@@ -1,0 +1,82 @@
+- name: Apt cache update
+  ansible.builtin.apt:
+    update_cache: true
+  tags:
+    - 'angie'
+
+- name: Install PHP and required modules
+  become: true
+  ansible.builtin.apt:
+    name:
+      - php-fpm
+      - php-curl
+      - php-mysqli
+      - php-gd
+      - php-intl
+      - php-mbstring
+      - php-soap
+      - php-xml
+      - php-xmlrpc
+      - php-zip
+    state: present
+
+- name: Install WordPress
+  become: true
+  ansible.builtin.get_url:
+    url: https://wordpress.org/latest.tar.gz
+    dest: /tmp/latest.tar.gz
+    mode: '0644'
+#  notify: Extract wordpress
+
+- name: Creating site dir
+  ansible.builtin.file:
+    path: /var/www/
+    state: directory
+    mode: '750'
+    owner: www-data
+    group: www-data
+
+- name: Extract wordpress
+  ansible.builtin.unarchive:
+    src: /tmp/latest.tar.gz
+    dest: /var/www/
+    remote_src: true
+    owner: www-data
+    group: www-data
+
+- name: Copying angie conf file
+  ansible.builtin.template:
+    src: wordpress.conf.j2
+    dest: "{{ angie_worpress_site }}"
+    mode: '0644'
+
+- name: Configure wp-config.php
+  become: true
+  ansible.builtin.template:
+    src: templates/wp-config.php.j2
+    dest: /var/www/wordpress/wp-config.php
+    mode: '0644'
+
+- name: Set correct permissions for WordPress files
+  become: true
+  ansible.builtin.file:
+    path: /var/www/wordpress
+    owner: www-data
+    group: www-data
+    recurse: true
+    state: directory
+
+- name: Restart angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
+    enabled: true
+
+
+- name: Restart mysql
+  ansible.builtin.systemd:
+    name: mysql
+    state: restarted
+    enabled: true
+
+

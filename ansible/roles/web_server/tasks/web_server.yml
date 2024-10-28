@@ -121,52 +121,52 @@
   tags:
     - 'angie'
 
-- name: Copying my static site
-  ansible.builtin.template:
-    src: my_static_site.conf.j2
-    dest: "{{ angie_static_site }}"
-    mode: '0644'
-  tags:
-    - 'angie'
+# - name: Copying site config
+#   ansible.builtin.template:
+#     src: my_static_site.conf.j2
+#     dest: "{{ angie_static_site }}"
+#     mode: '0644'
+#   tags:
+#     - 'angie'
 
-- name: Creating site dir
-  ansible.builtin.file:
-    path: /opt/mysite/
-    state: directory
-    mode: '755'
-    owner: root
-    group: angie
-  tags:
-    - 'angie'
+# - name: Creating site dir
+#   ansible.builtin.file:
+#     path: /opt/mysite/
+#     state: directory
+#     mode: '755'
+#     owner: root
+#     group: angie
+#   tags:
+#     - 'angie'
 
-- name: Copy the archived file to the remote host
-  ansible.builtin.copy:
-    src: static_site-252831-96c1e2.zip
-    dest: /tmp/static_site-252831-96c1e2.zip
-  tags:
-    - 'angie'
+# - name: Copy the archived file to the remote host
+#   ansible.builtin.copy:
+#     src: static_site-252831-96c1e2.zip
+#     dest: /tmp/static_site-252831-96c1e2.zip
+#   tags:
+#     - 'angie'
 
-- name: Extract the archived file to the specified directory
-  ansible.builtin.unarchive:
-    src: /tmp/static_site-252831-96c1e2.zip
-    dest: /opt/mysite
-    remote_src: true
-    owner: angie
-    group: angie
-  tags:
-    - 'angie'
+# - name: Extract the archived file to the specified directory
+#   ansible.builtin.unarchive:
+#     src: /tmp/static_site-252831-96c1e2.zip
+#     dest: /opt/mysite
+#     remote_src: true
+#     owner: angie
+#     group: angie
+#   tags:
+#     - 'angie'
 
-- name: Change permissions of the extracted files
-  ansible.builtin.file:
-    path: /opt/mysite
-    state: directory
-    recurse: yes
-    mode: "{{ item.mode }}"
-  with_items:
-    - { find_type: 'file', mode: '0640' }
-    - { find_type: 'directory', mode: '0750' }
-  tags:
-    - 'angie'
+# - name: Change permissions of the extracted files
+#   ansible.builtin.file:
+#     path: /opt/mysite
+#     state: directory
+#     recurse: yes
+#     mode: "{{ item.mode }}"
+#   with_items:
+#     - { find_type: 'file', mode: '0640' }
+#     - { find_type: 'directory', mode: '0750' }
+#   tags:
+#     - 'angie'
 
 # - name: Create symbolic link
 #   ansible.builtin.file:

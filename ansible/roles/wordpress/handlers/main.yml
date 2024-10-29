@@ -2,3 +2,9 @@
   ansible.builtin.service:
     name: mysql
     state: restarted
+
+- name: Restart angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
+    enabled: true

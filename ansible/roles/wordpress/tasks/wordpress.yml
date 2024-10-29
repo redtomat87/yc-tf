@@ -56,6 +56,7 @@
     src: templates/wp-config.php.j2
     dest: /var/www/wordpress/wp-config.php
     mode: '0644'
+  notify: Restart MySQL
 
 - name: Set correct permissions for WordPress files
   become: true
@@ -78,5 +79,3 @@
     name: mysql
     state: restarted
     enabled: true
-
-

@@ -1,0 +1,25 @@
+- name: Copying angie.conf
+  ansible.builtin.template:
+    src: angie.conf.j2
+    dest: "{{ angie_conf_dest }}"
+    mode: '0644'
+    owner: root
+    group: root
+  tags:
+    - 'angie'
+
+- name: Copying site config
+  ansible.builtin.template:
+    src: redtomat.conf.j2
+    dest: "{{ angie_worpress_site }}"
+    mode: '0644'
+  tags:
+    - 'angie'
+
+- name: Restart angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
+    enabled: true
+  tags:
+    - 'angie'

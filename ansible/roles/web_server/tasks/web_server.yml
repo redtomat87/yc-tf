@@ -121,6 +121,16 @@
   tags:
     - 'angie'
 
+- name: Creating cache directory
+  ansible.builtin.file:
+    path: /opt/cache/worpress
+    state: directory
+    mode: '755'
+    owner: www-data
+    group: www-data
+  tags:
+    - 'angie'
+
 # - name: Copying site config
 #   ansible.builtin.template:
 #     src: my_static_site.conf.j2

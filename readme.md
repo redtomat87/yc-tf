@@ -22,3 +22,7 @@ ansible-playbook -v angie.yml --tags angie-docker
 ```
 ansible-playbook -v angie.yml --tags angie
 ```
+Для установки worpress
+```
+ansible-playbook -v wordpress.yml
+```

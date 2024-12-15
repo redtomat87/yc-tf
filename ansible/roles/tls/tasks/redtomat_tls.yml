@@ -1,30 +1,19 @@
-- name: Get local ACME directories status
-  ansible.builtin.stat:
-    path: "{{ local_backup_dir }}/{{ item }}"
-  register: local_dirs
-  delegate_to: localhost
-  become: false
-  loop: "{{ acme_dirs }}"
-
-- name: Get remote ACME directories status
-  ansible.builtin.stat:
-    path: "/var/lib/angie/acme/{{ item }}"
-  register: remote_dirs
-  loop: "{{ acme_dirs }}"
-
-- name: Copy ACME directories to remote host
+- name: Synchronize ACME directories
   ansible.builtin.synchronize:
-    src: "{{ local_backup_dir }}/{{ item.0 }}/"
-    dest: "/var/lib/angie/acme/{{ item.0 }}/"
+    src: "{{ local_backup_dir }}/{{ item }}/"
+    dest: "/var/lib/angie/acme/{{ item }}/"
     mode: push
+    recursive: yes
+    checksum: yes
     rsync_opts:
       - "--chmod=D0700,F0600"
       - "--rsync-path='sudo rsync'"
-  when: 
-    - item.1.stat.exists  
-    - not item.2.stat.exists  
-  loop: "{{ acme_dirs | zip(local_dirs.results, remote_dirs.results) | list }}"
+      - "--ignore-existing"
+      - "--update"
+  loop: "{{ acme_dirs }}"
   delegate_to: localhost
+  when: 
+    - (local_backup_dir + '/' + item) is directory
 
 - name: Copying angie.conf
   ansible.builtin.template:
@@ -45,7 +34,6 @@
     name: angie
     state: restarted
     enabled: true
-
 
 - name: Check and backup ACME directories
   block:
@@ -74,6 +62,7 @@
         rsync_opts:
           - "--chmod=D0755,F0644"
           - "--rsync-path='sudo rsync'"
+          - "--checksum"  
       loop: "{{ remote_dirs_backup.files }}"
       when: remote_dirs_backup.matched > 0
       delegate_to: localhost
@@ -81,4 +70,3 @@
 
   tags:
     - backup
-

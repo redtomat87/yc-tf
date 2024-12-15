@@ -13,6 +13,6 @@
     angie_worpress_site: /etc/angie/http.d/default.conf
 
     acme_dirs:
-      - rsa
-      - ecdsa
+    - rsa
+    - ecdsa
     local_backup_dir: "{{ playbook_dir }}/files/cert_backup"

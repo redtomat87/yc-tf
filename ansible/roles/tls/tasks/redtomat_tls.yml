@@ -12,28 +12,51 @@
       - "--update"
   loop: "{{ acme_dirs }}"
   delegate_to: localhost
+  become: false
   when: 
     - (local_backup_dir + '/' + item) is directory
 
-- name: Copying angie.conf
+- name: Check existing angie.conf
   ansible.builtin.template:
     src: angie.conf.j2
     dest: "{{ angie_conf_dest }}"
     mode: '0644'
     owner: root
     group: root
+    validate: '/usr/sbin/angie -t -c %s'
+    check_mode: yes
+  register: angie_conf_check
+  ignore_errors: yes
 
-- name: Copying site config
+- name: Check existing site config
   ansible.builtin.template:
     src: redtomat.conf.j2
     dest: "{{ angie_worpress_site }}"
     mode: '0644'
+    validate: '/usr/sbin/angie -t -c %s'
+    check_mode: yes
+  register: site_conf_check
+  ignore_errors: yes
 
-- name: Restart angie
-  ansible.builtin.systemd:
-    name: angie
-    state: restarted
-    enabled: true
+- name: Copy angie.conf if different
+  ansible.builtin.template:
+    src: angie.conf.j2
+    dest: "{{ angie_conf_dest }}"
+    mode: '0644'
+    owner: root
+    group: root
+    validate: '/usr/sbin/angie -t -c %s'
+  when: angie_conf_check is changed
+  notify: restart angie
+
+- name: Copy site config if different
+  ansible.builtin.template:
+    src: redtomat.conf.j2
+    dest: "{{ angie_worpress_site }}"
+    mode: '0644'
+    validate: '/usr/sbin/angie -t -c %s'
+  when: site_conf_check is changed
+  notify: restart angie
 
 - name: Check and backup ACME directories
   block:
@@ -67,6 +90,5 @@
       when: remote_dirs_backup.matched > 0
       delegate_to: localhost
       become: false
-
   tags:
     - backup

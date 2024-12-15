@@ -30,3 +30,7 @@ ansible-playbook -v wordpress.yml
 ```
 ansible-playbook -v tls.yml 
 ```
+Если требуется сделать просто Backup сертификатов
+```
+ansible-playbook -v tls.yml --tags backup
+``` 

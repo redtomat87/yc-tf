@@ -1,0 +1,108 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name angie.redtomat.ru angie.redtomat.ru;
+    return 301 https://$host$request_uri;
+}
+
+
+server {
+    ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
+    listen 443 ssl default_server reuseport;
+    ## Включаем quic (udp) для HTTP3
+    listen 443 quic reuseport;
+
+    server_name angie.redtomat.ru;
+
+    ## Включаем использования кэша с соотв. зоной wordpress_preprod 
+    proxy_cache wordpress_preprod;
+
+    ## Обновление элемента кэша строго одним запросом
+    proxy_cache_lock on;
+
+    ## Минимальное количество обращений по ключу для кэша
+    proxy_cache_min_uses 2;
+
+    ## Использовать устаревшие ответы в случае проблем:
+    proxy_cache_use_stale updating error timeout invalid_header http_500 http_502 http_504;
+
+    ## HSTS (заставить браузер использовать HTTPS на долгое время)
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    charset utf-8;
+
+    root /var/www/wordpress;
+    #root /var/www/html;
+    index index.html index.php;
+
+    ## Заказываем и прикручиваем сертификаты. Сертификаты находятся в /var/lib/angie/acme/, если не
+    ## переопределено директивой acme_client_path
+    acme                 rsa;
+    acme                 ecdsa;
+    ssl_certificate      $acme_cert_rsa;
+    ssl_certificate_key  $acme_cert_key_rsa;
+    ssl_certificate      $acme_cert_ecdsa;
+    ssl_certificate_key  $acme_cert_key_ecdsa;
+    
+    ## Включаем HTTP2 и HTTP3
+    http2 on;
+    http3 on;
+    add_header Alt-Svc 'h3=":443"; ma=86400';
+    
+    ## Разрешает отправку оптимизированного пакетного режима при помощи segmentation offloading (Упрощаем обработку траффика на уровне сетевой карты если поддерживается)
+    quic_gso on;
+
+    ## Разрешает функциональность QUIC Address Validation,
+    ## в том числе отправку нового токена в Retry-пакете или NEW_TOKEN frame и валидацию токена, полученного в Initial-пакете
+    quic_retry on;
+
+
+    location ~ /\.well-known/ {
+        allow all;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+	 
+    location ~ ^/wp-content/cache { 
+		deny all;
+    }
+	 
+    location ~* /(?:uploads|files)/.*\.php$ {
+		deny all;
+    }
+
+    location / {
+		try_files $uri $uri/ /index.php?$args;
+		#try_files $uri =404;
+    }
+
+    location /wp-content {
+    ##Отдаём контент на хрранение в кэше пользователя
+	  add_header Cache-Control "max-age=2592000, public, no-transform, immutable";
+
+    ##Кэшируем двухсотые на день
+    proxy_cache_valid 200 24h;
+    proxy_cache_background_update on;
+    }
+
+    location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
+    ##Отдаём контент на хрранение в кэш пользователя
+	  add_header Cache-Control "max-age=2592000, public, no-transform, immutable";
+
+    ##Кэшируем двухсотые на день 24h;
+    proxy_cache_valid 200 1h;
+    proxy_cache_background_update on;
+    }
+
+    location ~ \.php$ {
+		# fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+		include fastcgi.conf;
+		fastcgi_intercept_errors on;
+		#fastcgi_pass 192.168.122.100:9000;
+		fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+		fastcgi_index index.php;
+    }
+}

@@ -5,14 +5,16 @@ define('DB_PASSWORD', '{{ mysql_wordpress_user_password }}');
 define('DB_HOST', '{{ ansible_default_ipv4.address }}:3306');
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');
-define('AUTH_KEY',         'put your unique phrase here');
-define('SECURE_AUTH_KEY',  'put your unique phrase here');
-define('LOGGED_IN_KEY',    'put your unique phrase here');
-define('NONCE_KEY',        'put your unique phrase here');
-define('AUTH_SALT',        'put your unique phrase here');
-define('SECURE_AUTH_SALT', 'put your unique phrase here');
-define('LOGGED_IN_SALT',   'put your unique phrase here');
-define('NONCE_SALT',       'put your unique phrase here');
+# Обязательно меняйте соль! Сгенерить можно здесь https://api.wordpress.org/secret-key/1.1/salt/
+define('AUTH_KEY',         'egHnb1?hHrqo$(w-AoRY2k?ZQ,]s-NCe?Rsd=!(m[O(N!o5hwka|sw/C2Y|Dlt#h');
+define('SECURE_AUTH_KEY',  '+208NQG,>twzW-y$HJnnHeB$4CmJL#RFj3kE%yhJLS->(#|<^GGGnj CApi= :vZ');
+define('LOGGED_IN_KEY',    '|F/d)]ia+Q,<yoCgfTrfxY&0j!9amiG{2TIDQ?xIXk>b-H9*A{ *%$.r+MCBu|8|');
+define('NONCE_KEY',        'IE#(4(/&nN@6.EA-Og=+(.,|~8A1a/f+*BO;6A7o,z0F0d<b-M;?-B2~nYH[|cwL');
+define('AUTH_SALT',        'h8wDO5!;Ls# kk!.AA0^dCO^g>!W|u-96HdD-kPcrWE{Dh/X;]!iO&,g`lej-U^8');
+define('SECURE_AUTH_SALT', 'r^ij4V.).x`+?biS+WLWx|!j!#$t5wG#l*_G+^WQw,N|VXm(&,uB2|-6QT Hjc*8');
+define('LOGGED_IN_SALT',   ']/q$Om^v|{dd`+lSWP,:Vpw.g|ppHGd3lvHT+yFEM::eCvoju3(g[?RMs%!-88|0');
+define('NONCE_SALT',       'z0upjjWvN<wBtuO9qfHK2n+/dJA1/9T1r36[|=6EnLiMY*r>D&._[v*7&J ;FmnF');
+define('WP_ALLOW_REPAIR', true);
 
 $table_prefix = 'wp_';
 

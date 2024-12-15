@@ -44,11 +44,17 @@
     owner: www-data
     group: www-data
 
+- name: Check if angie conf file exists
+  ansible.builtin.stat:
+    path: "{{ angie_worpress_site }}"
+  register: angie_conf_file
+
 - name: Copying angie conf file
   ansible.builtin.template:
     src: wordpress.conf.j2
     dest: "{{ angie_worpress_site }}"
     mode: '0644'
+  # when: not angie_conf_file.stat.exists
 
 - name: Configure wp-config.php
   become: true
@@ -72,6 +78,7 @@
     name: angie
     state: restarted
     enabled: true
+  # when: not angie_conf_file.stat.exists
 
 
 - name: Restart mysql

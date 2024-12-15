@@ -26,3 +26,7 @@ ansible-playbook -v angie.yml --tags angie
 ```
 ansible-playbook -v wordpress.yml
 ```
+Для установки TLS сертификатов для домена и включения http2/3
+```
+ansible-playbook -v tls.yml 
+```

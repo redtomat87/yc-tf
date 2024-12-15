@@ -11,3 +11,8 @@
     mysql_wordpress_user_password: "testtest"
 
     angie_worpress_site: /etc/angie/http.d/default.conf
+
+    acme_dirs:
+      - rsa
+      - ecdsa
+    local_backup_dir: "{{ playbook_dir }}/files/cert_backup"

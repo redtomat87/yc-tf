@@ -44,3 +44,4 @@ hosts.yaml
 *.key
 .vscode
 *.zip
+*.pem

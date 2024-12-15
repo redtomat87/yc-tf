@@ -1,3 +1,19 @@
+- name: Check if directories exist on local host
+  ansible.builtin.stat:
+    path: "{{ local_backup_dir }}/{{ item }}"
+  register: local_dir_stat
+  delegate_to: localhost
+  become: false
+  loop: "{{ acme_dirs }}"
+
+- name: Copy directories to remote host if they exist locally
+  ansible.builtin.synchronize:
+    src: "{{ local_backup_dir }}/{{ item }}"
+    dest: /var/lib/angie/acme/{{ item }}
+    mode: pull
+  when: local_dir_stat.results | selectattr('stat.exists', 'equalto', True) | list | length > 0 and item in local_dir_stat.results | selectattr('stat.exists', 'equalto', True) | map(attribute='item') | list
+  loop: "{{ acme_dirs }}"
+
 - name: Copying angie.conf
   ansible.builtin.template:
     src: angie.conf.j2
@@ -5,21 +21,51 @@
     mode: '0644'
     owner: root
     group: root
-  tags:
-    - 'angie'
 
 - name: Copying site config
   ansible.builtin.template:
     src: redtomat.conf.j2
     dest: "{{ angie_worpress_site }}"
     mode: '0644'
-  tags:
-    - 'angie'
 
 - name: Restart angie
   ansible.builtin.systemd:
     name: angie
     state: restarted
     enabled: true
+
+- name: Check and backup ACME directories
+  block:
+    - name: Get remote directories status
+      ansible.builtin.find:
+        paths: /var/lib/angie/acme
+        file_type: directory
+        patterns: "{{ acme_dirs }}"
+      register: remote_dirs
+
+    - name: Create local backup directory if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      become: false
+
+    - name: Backup ACME directories to local host
+      ansible.builtin.synchronize:
+        src: "{{ item.path }}/"
+        dest: "{{ local_backup_dir }}/{{ item.path | basename }}/"
+        mode: pull
+        recursive: yes
+        use_ssh_args: yes
+        rsync_opts:
+          - "--chmod=D0755,F0644"
+          - "--rsync-path='sudo rsync'"
+      loop: "{{ remote_dirs.files }}"
+      when: remote_dirs.matched > 0
+      delegate_to: localhost
+      become: false
+
   tags:
-    - 'angie'
+    - backup
+

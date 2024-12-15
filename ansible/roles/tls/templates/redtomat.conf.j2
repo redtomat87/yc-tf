@@ -14,17 +14,7 @@ server {
 
     server_name angie.redtomat.ru;
 
-    ## Включаем использования кэша с соотв. зоной wordpress_preprod 
-    proxy_cache wordpress_preprod;
 
-    ## Обновление элемента кэша строго одним запросом
-    proxy_cache_lock on;
-
-    ## Минимальное количество обращений по ключу для кэша
-    proxy_cache_min_uses 2;
-
-    ## Использовать устаревшие ответы в случае проблем:
-    proxy_cache_use_stale updating error timeout invalid_header http_500 http_502 http_504;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
@@ -82,19 +72,11 @@ server {
     location /wp-content {
     ##Отдаём контент на хрранение в кэше пользователя
 	  add_header Cache-Control "max-age=2592000, public, no-transform, immutable";
-
-    ##Кэшируем двухсотые на день
-    proxy_cache_valid 200 24h;
-    proxy_cache_background_update on;
     }
 
     location ~* \.(css|gif|ico|jpeg|jpg|js|png)$ {
     ##Отдаём контент на хрранение в кэш пользователя
 	  add_header Cache-Control "max-age=2592000, public, no-transform, immutable";
-
-    ##Кэшируем двухсотые на день 24h;
-    proxy_cache_valid 200 1h;
-    proxy_cache_background_update on;
     }
 
     location ~ \.php$ {
@@ -104,5 +86,19 @@ server {
 		#fastcgi_pass 192.168.122.100:9000;
 		fastcgi_pass unix:/run/php/php8.3-fpm.sock;
 		fastcgi_index index.php;
+    ## Включаем использования кэша с соотв. зоной wordpress_preprod 
+    proxy_cache wordpress_preprod;
+
+    ## Обновление элемента кэша строго одним запросом
+    proxy_cache_lock on;
+
+    ## Минимальное количество обращений по ключу для кэша
+    proxy_cache_min_uses 2;
+
+    ## Использовать устаревшие ответы в случае проблем:
+    proxy_cache_use_stale updating error timeout invalid_header http_500 http_502 http_504;
+    ##Кэшируем двухсотые на день
+    proxy_cache_valid 200 24h;
+    proxy_cache_background_update on;    
     }
 }

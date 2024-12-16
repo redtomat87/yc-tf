@@ -1,0 +1,6 @@
+- name: Install backend's in docker for tests
+  hosts: all
+  roles:
+    - role: docker_backends
+  tags:
+    - backend

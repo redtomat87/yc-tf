@@ -1,10 +1,10 @@
 - name: Synchronize ACME directories
-  ansible.builtin.synchronize:
+  ansible.posix.synchronize:
     src: "{{ local_backup_dir }}/{{ item }}/"
     dest: "/var/lib/angie/acme/{{ item }}/"
     mode: push
-    recursive: yes
-    checksum: yes
+    recursive: true
+    checksum: true
     rsync_opts:
       - "--chmod=D0700,F0600"
       - "--rsync-path='sudo rsync'"
@@ -13,50 +13,26 @@
   loop: "{{ acme_dirs }}"
   delegate_to: localhost
   become: false
-  when: 
+  when:
     - (local_backup_dir + '/' + item) is directory
 
-- name: Check existing angie.conf
+- name: Template angie.conf
   ansible.builtin.template:
     src: angie.conf.j2
     dest: "{{ angie_conf_dest }}"
     mode: '0644'
     owner: root
     group: root
-    validate: '/usr/sbin/angie -t -c %s'
-    check_mode: yes
-  register: angie_conf_check
-  ignore_errors: yes
+  notify: Restart angie
 
-- name: Check existing site config
+- name: Template site config
   ansible.builtin.template:
     src: redtomat.conf.j2
     dest: "{{ angie_worpress_site }}"
-    mode: '0644'
-    validate: '/usr/sbin/angie -t -c %s'
-    check_mode: yes
-  register: site_conf_check
-  ignore_errors: yes
-
-- name: Copy angie.conf if different
-  ansible.builtin.template:
-    src: angie.conf.j2
-    dest: "{{ angie_conf_dest }}"
     mode: '0644'
     owner: root
     group: root
-    validate: '/usr/sbin/angie -t -c %s'
-  when: angie_conf_check is changed
-  notify: restart angie
-
-- name: Copy site config if different
-  ansible.builtin.template:
-    src: redtomat.conf.j2
-    dest: "{{ angie_worpress_site }}"
-    mode: '0644'
-    validate: '/usr/sbin/angie -t -c %s'
-  when: site_conf_check is changed
-  notify: restart angie
+  notify: Restart angie
 
 - name: Check and backup ACME directories
   block:
@@ -80,12 +56,12 @@
         src: "{{ item.path }}/"
         dest: "{{ local_backup_dir }}/{{ item.path | basename }}/"
         mode: pull
-        recursive: yes
-        use_ssh_args: yes
+        recursive: true
+        use_ssh_args: true
         rsync_opts:
           - "--chmod=D0755,F0644"
           - "--rsync-path='sudo rsync'"
-          - "--checksum"  
+          - "--checksum"
       loop: "{{ remote_dirs_backup.files }}"
       when: remote_dirs_backup.matched > 0
       delegate_to: localhost

@@ -15,3 +15,12 @@ resource "yandex_dns_recordset" "vm-dns" {
   ttl     = 300
   data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
 }
+
+resource "yandex_dns_recordset" "vm-dns-backend" {
+  count   = length(var.vm)
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  name    = "${var.vm[count.index]}-backend.${var.dns_zone}"
+  type    = "A"
+  ttl     = 300
+  data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
+}

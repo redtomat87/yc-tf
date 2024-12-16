@@ -1,6 +1,6 @@
 - name: Install and configure Docker
   block:
-    - name: Install required system packages
+    - name: Install initial dependencies
       ansible.builtin.apt:
         pkg:
           - apt-transport-https
@@ -11,41 +11,62 @@
           - python3-pip
           - python3-setuptools
           - python3-docker
+          - docker-compose          
         state: present
-        update_cache: yes
+        update_cache: true
         cache_valid_time: 3600
 
-    - name: Add Docker GPG apt Key
-      ansible.builtin.apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-        id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
 
-    - name: Add Docker Repository
+    - name: Download Docker's GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Get Ubuntu version codename
+      ansible.builtin.command: lsb_release -cs
+      register: ubuntu_codename
+      changed_when: false
+    
+    - name: Get system architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: system_architecture
+      changed_when: false
+
+    - name: Add Docker repository
       ansible.builtin.apt_repository:
-        repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+        repo: >-
+          deb [arch={{ system_architecture.stdout }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu
+          {{ ubuntu_codename.stdout }} stable
         state: present
         filename: docker
-        update_cache: yes
+        update_cache: true
 
-    - name: Install Docker CE
+    - name: Install Docker packages
       ansible.builtin.apt:
-        name: 
+        pkg:
           - docker-ce
           - docker-ce-cli
           - containerd.io
+          - docker-buildx-plugin
           - docker-compose-plugin
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
   become: true
   tags:
-    - docker
     - install
 
 - name: Configure Docker network and application
@@ -67,7 +88,7 @@
 
     - name: Copy Docker Compose file
       ansible.builtin.template:
-        src: docker_compose_debug.yml
+        src: docker_compose_debug.yml.j2
         dest: /opt/angie/docker-compose.yml
         mode: '0644'
         owner: root
@@ -76,15 +97,14 @@
       register: compose_file
 
     - name: Deploy Docker Compose stack
-      community.docker.docker_compose:
+      community.docker.docker_compose_v2:
         project_src: /opt/angie
         files:
           - docker-compose.yml
         state: present
-        pull: yes 
+        pull: missing
       register: docker_stack
       notify: cleanup docker
   become: true
   tags:
-    - docker
     - deploy

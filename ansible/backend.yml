@@ -4,3 +4,5 @@
     - role: docker_backends
   tags:
     - backend
+    - install
+    - deploy

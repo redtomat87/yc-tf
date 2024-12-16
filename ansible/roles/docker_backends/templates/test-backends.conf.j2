@@ -38,13 +38,12 @@ server {
       proxy_http_version 1.1;
       proxy_set_header Connection "";
 
-      proxy_pass https://backend;
+      proxy_pass https://test-backend;
 
     }
 }
 
 upstream test-backend {
-    least_time header;
     server 192.168.10.10:9000;
     server 192.168.10.10:9001;
     server 192.168.10.10:9002;
@@ -53,6 +52,17 @@ upstream test-backend {
     keepalive_requests 1000;
     keepalive_timeout 60s;
 }
+
+#upstream test-backend {
+#    hash $request_uri
+#    server 192.168.10.10:9000;
+#    server 192.168.10.10:9001;
+#    server 192.168.10.10:9002;
+#    server 192.168.10.10:9003;
+#    keepalive 16;
+#    keepalive_requests 1000;
+#    keepalive_timeout 60s;
+#} 
 
 #upstream test-backend {
 #    hash $request_uri

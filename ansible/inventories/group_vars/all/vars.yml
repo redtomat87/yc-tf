@@ -11,6 +11,7 @@
     mysql_wordpress_user_password: "testtest"
 
     angie_worpress_site: /etc/angie/http.d/default.conf
+    backend_site: /etc/angie/http.d/backend.conf
 
     acme_dirs:
     - rsa

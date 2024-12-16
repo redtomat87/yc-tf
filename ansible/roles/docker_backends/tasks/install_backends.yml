@@ -11,7 +11,7 @@
           - python3-pip
           - python3-setuptools
           - python3-docker
-          - docker-compose          
+          - docker-compose
         state: present
         update_cache: true
         cache_valid_time: 3600
@@ -32,7 +32,7 @@
       ansible.builtin.command: lsb_release -cs
       register: ubuntu_codename
       changed_when: false
-    
+
     - name: Get system architecture
       ansible.builtin.command: dpkg --print-architecture
       register: system_architecture
@@ -104,7 +104,18 @@
         state: present
         pull: missing
       register: docker_stack
-      notify: cleanup docker
+      notify: Cleanup docker
+
+    - name: Template backend site config
+      ansible.builtin.template:
+        src: test-backends.conf.j2
+        dest: "{{ backend_site }}"
+        mode: '0644'
+        owner: root
+        group: root
+        validate: 'angie -t -c %s'
+      notify: Restart angie
+
   become: true
   tags:
     - deploy

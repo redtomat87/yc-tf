@@ -1,3 +1,7 @@
+- name: Debug all facts
+  debug:
+    msg: "{{ ansible_default_ipv4.address }}"
+
 - name: Synchronize ACME directories
   ansible.posix.synchronize:
     src: "{{ local_backup_dir }}/{{ item }}/"

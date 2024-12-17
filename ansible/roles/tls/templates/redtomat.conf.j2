@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen {{ ansible_default_ipv4.address }}:80;
     server_name _;
     return 301 https://$host$request_uri;
 }
@@ -7,9 +7,9 @@ server {
 
 server {
     ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen 443 ssl default_server reuseport;
+    listen {{ ansible_default_ipv4.address }}:443 ssl default_server reuseport;
     ## Включаем quic (udp) для HTTP3
-    listen 443 quic reuseport;
+    listen {{ ansible_default_ipv4.address }}:443 quic reuseport;
 
     server_name angie.redtomat.ru;
 
@@ -37,6 +37,10 @@ server {
     http2 on;
     http3 on;
     add_header Alt-Svc 'h3=":443"; ma=86400';
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
     
     ## Разрешает отправку оптимизированного пакетного режима при помощи segmentation offloading (Упрощаем обработку траффика на уровне сетевой карты если поддерживается)
     quic_gso on;
@@ -54,9 +58,32 @@ server {
         deny all;
     }
 
+    location = /favicon.ico {
+    log_not_found off;
+    access_log off;
+    }
+
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+
 	 
     location ~ ^/wp-content/cache { 
 		deny all;
+    }
+
+    location ~* wp-config.php {
+    deny all;
+    }
+    
+    location ~* wp-admin/includes {
+        deny all;
+    }
+    
+    location ~* wp-includes/.*\.php$ {
+        deny all;
     }
 	 
     location ~* /(?:uploads|files)/.*\.php$ {
@@ -77,27 +104,42 @@ server {
     ##Отдаём контент на хрранение в кэш пользователя
 	  add_header Cache-Control "max-age=2592000, public, no-transform, immutable";
     }
-
+    
     location ~ \.php$ {
-		# fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
-		include fastcgi.conf;
-		fastcgi_intercept_errors on;
-		#fastcgi_pass 192.168.122.100:9000;
-		fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-		fastcgi_index index.php;
-    ## Включаем использования кэша с соотв. зоной wordpress_preprod 
-    proxy_cache wordpress_preprod;
-
-    ## Обновление элемента кэша строго одним запросом
-    proxy_cache_lock on;
-
-    ## Минимальное количество обращений по ключу для кэша
-    proxy_cache_min_uses 2;
-
-    ## Использовать устаревшие ответы в случае проблем:
-    proxy_cache_use_stale updating error timeout invalid_header http_500 http_502 http_504;
-    ##Кэшируем двухсотые на день
-    proxy_cache_valid 200 24h;
-    proxy_cache_background_update on;    
+        include fastcgi.conf;
+        fastcgi_intercept_errors on;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_index index.php;
+        
+        fastcgi_cache wordpress_preprod_fastcgi;
+        fastcgi_cache_lock on;
+        fastcgi_cache_min_uses 2;
+        fastcgi_cache_use_stale updating error timeout invalid_header http_500 http_503;
+        fastcgi_cache_valid 200 24h;
+        fastcgi_cache_background_update on;
     }
+
+
+    ##location ~
+		### fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+		##include fastcgi.conf;
+		##fastcgi_intercept_errors on;
+		###fastcgi_pass 192.168.122.100:9000;
+		##fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+		##fastcgi_index index.php;
+    #### Включаем использования кэша с соотв. зоной wordpress_preprod 
+    ##proxy_cache wordpress_preprod;
+##
+    #### Обновление элемента кэша строго одним запросом
+    ##proxy_cache_lock on;
+##
+    #### Минимальное количество обращений по ключу для кэша
+    ##proxy_cache_min_uses 2;
+##
+    #### Использовать устаревшие ответы в случае проблем:
+    ##proxy_cache_use_stale updating error timeout invalid_header http_500 http_502 http_504;
+    ####Кэшируем двухсотые на день
+    ##proxy_cache_valid 200 24h;
+    ##proxy_cache_background_update on;    
+    
 }

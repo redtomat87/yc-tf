@@ -106,6 +106,13 @@
       register: docker_stack
       notify: Cleanup docker
 
+    - name: Create validation script
+      template:
+        src: validate.sh.j2
+        dest: /tmp/validate.sh
+        mode: '0755'
+      changed_when: false
+
     - name: Template backend site config
       ansible.builtin.template:
         src: test-backends.conf.j2
@@ -113,7 +120,7 @@
         mode: '0644'
         owner: root
         group: root
-        validate: 'angie -t -c %s'
+        validate: '/tmp/validate.sh %s'
       notify: Restart angie
 
   become: true

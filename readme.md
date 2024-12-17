@@ -34,3 +34,7 @@ ansible-playbook -v tls.yml
 ```
 ansible-playbook -v tls.yml --tags backup
 ``` 
+Для установки тестовых бэкендов
+```
+ansible-playbook -v backends.yml
+``` 

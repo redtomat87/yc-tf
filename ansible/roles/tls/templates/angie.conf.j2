@@ -120,6 +120,10 @@ http {
     proxy_cache_key $scheme$host$request_uri;
 ## Кэш для зоны wordpress_preprod
     proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+## Кэш для зоны wordpress_preprod_fastcgi
+    fastcgi_cache_path /opt/cache/wordpress_preprod_fastcgi levels=1:2 keys_zone=wordpress_preprod_fastcgi:10m inactive=48h max_size=1000m;
+    fastcgi_cache_key $scheme$host$request_uri;
+
 
 
     #gzip  on;

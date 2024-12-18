@@ -1,0 +1,5 @@
+- name: Restart angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
+    enabled: true

@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  debug-white:
+    image: vscoder/webdebugger
+    container_name: debug-white
+    restart: unless-stopped
+    environment:
+      APP_DELAY: 0
+      APP_PORT: 8080
+      APP_BGCOLOR: white
+    ports:
+      - "9000:8080"
+  debug-blue:
+    image: vscoder/webdebugger
+    container_name: debug-blue
+    restart: unless-stopped
+    environment:
+      APP_DELAY: 0
+      APP_PORT: 8080
+      APP_BGCOLOR: skyblue
+    ports:
+      - "9001:8080"
+  debug-green:
+    image: vscoder/webdebugger
+    container_name: debug-green
+    restart: unless-stopped
+    environment:
+      APP_DELAY: 0
+      APP_PORT: 8080
+      APP_BGCOLOR: limegreen
+    ports:
+      - "9002:8080"      
+  debug-gold:
+    image: vscoder/webdebugger
+    container_name: debug-gold
+    restart: unless-stopped
+    environment:
+      APP_DELAY: 0
+      APP_PORT: 8080
+      APP_BGCOLOR: gold
+    ports:
+      - "9003:8080"

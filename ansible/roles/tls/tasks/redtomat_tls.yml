@@ -1,25 +1,74 @@
-- name: Copying angie.conf
+- name: Debug all facts
+  debug:
+    msg: "{{ ansible_default_ipv4.address }}"
+
+- name: Synchronize ACME directories
+  ansible.posix.synchronize:
+    src: "{{ local_backup_dir }}/{{ item }}/"
+    dest: "/var/lib/angie/acme/{{ item }}/"
+    mode: push
+    recursive: true
+    checksum: true
+    rsync_opts:
+      - "--chmod=D0700,F0600"
+      - "--rsync-path='sudo rsync'"
+      - "--ignore-existing"
+      - "--update"
+  loop: "{{ acme_dirs }}"
+  delegate_to: localhost
+  become: false
+  when:
+    - (local_backup_dir + '/' + item) is directory
+
+- name: Template angie.conf
   ansible.builtin.template:
     src: angie.conf.j2
     dest: "{{ angie_conf_dest }}"
     mode: '0644'
     owner: root
     group: root
-  tags:
-    - 'angie'
+  notify: Restart angie
 
-- name: Copying site config
+- name: Template site config
   ansible.builtin.template:
     src: redtomat.conf.j2
     dest: "{{ angie_worpress_site }}"
     mode: '0644'
-  tags:
-    - 'angie'
+    owner: root
+    group: root
+  notify: Restart angie
 
-- name: Restart angie
-  ansible.builtin.systemd:
-    name: angie
-    state: restarted
-    enabled: true
+- name: Check and backup ACME directories
+  block:
+    - name: Get remote directories status
+      ansible.builtin.find:
+        paths: /var/lib/angie/acme
+        file_type: directory
+        patterns: "{{ acme_dirs }}"
+      register: remote_dirs_backup
+
+    - name: Create local backup directory if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      become: false
+
+    - name: Backup ACME directories to local host
+      ansible.builtin.synchronize:
+        src: "{{ item.path }}/"
+        dest: "{{ local_backup_dir }}/{{ item.path | basename }}/"
+        mode: pull
+        recursive: true
+        use_ssh_args: true
+        rsync_opts:
+          - "--chmod=D0755,F0644"
+          - "--rsync-path='sudo rsync'"
+          - "--checksum"
+      loop: "{{ remote_dirs_backup.files }}"
+      when: remote_dirs_backup.matched > 0
+      delegate_to: localhost
+      become: false
   tags:
-    - 'angie'
+    - backup

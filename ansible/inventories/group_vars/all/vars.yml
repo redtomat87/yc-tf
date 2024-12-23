@@ -3,15 +3,15 @@
     angie_cert_dest: /etc/ssl/angie/angie-repo.crt
     angie_key_dest: /etc/ssl/angie/angie-repo.key
     angie_conf_dest: /etc/angie/angie.conf
-    angie_static_site: /etc/angie/http.d/default.conf
 
     mysql_root_password: "test"
     mysql_wordpress_db: "wordpress"
     mysql_wordpress_user: "wordpress"
     mysql_wordpress_user_password: "testtest"
 
-    angie_worpress_site: /etc/angie/http.d/default.conf
+    angie_wordpress_site: /etc/angie/http.d/default.conf
     backend_site: /etc/angie/http.d/backend.conf
+    angie_static_site: /etc/angie/http.d/static.conf
 
     acme_dirs:
     - rsa

@@ -82,21 +82,6 @@
   tags:
     - 'angie'
 
-- name: Apt cache update
-  ansible.builtin.apt:
-    update_cache: true
-  register: apt_update_result
-  ignore_errors: true
-  tags:
-    - 'angie'
-
-- name: Display apt update error if any
-  ansible.builtin.debug:
-    var: apt_update_result
-  when: apt_update_result is failed
-  tags:
-    - 'angie'
-
 - name: Installing angie-pro
   ansible.builtin.apt:
     name: angie-pro
@@ -110,86 +95,122 @@
       - angie-pro-module-zstd
       - angie-pro-module-brotli
     state: present
+    update_cache: true
   tags:
     - 'angie'
 
-- name: Copying angie.conf
-  ansible.builtin.template:
-    src: angie.conf.j2
-    dest: "{{ angie_conf_dest }}"
-    mode: '0644'
-  tags:
-    - 'angie'
-
-- name: Creating cache directory
+- name: Creating site dir
   ansible.builtin.file:
-    path: /opt/cache/worpress
+    path: /opt/mysite/
     state: directory
-    mode: '755'
+    mode: '0750'
+    owner: root
+    group: angie
+  tags:
+    - 'angie'
+
+- name: Copy the archived file to the remote host
+  ansible.builtin.copy:
+    src: static_site-252831-96c1e2.zip
+    dest: /tmp/static_site-252831-96c1e2.zip
+  tags:
+    - 'angie'
+
+- name: Extract the archived file to the specified directory with specific permissions
+  ansible.builtin.unarchive:
+    src: /tmp/static_site-252831-96c1e2.zip
+    dest: /opt/mysite
+    remote_src: true
     owner: www-data
     group: www-data
   tags:
     - 'angie'
 
-# - name: Copying site config
-#   ansible.builtin.template:
-#     src: my_static_site.conf.j2
-#     dest: "{{ angie_static_site }}"
-#     mode: '0644'
-#   tags:
-#     - 'angie'
-
-# - name: Creating site dir
-#   ansible.builtin.file:
-#     path: /opt/mysite/
-#     state: directory
-#     mode: '755'
-#     owner: root
-#     group: angie
-#   tags:
-#     - 'angie'
-
-# - name: Copy the archived file to the remote host
-#   ansible.builtin.copy:
-#     src: static_site-252831-96c1e2.zip
-#     dest: /tmp/static_site-252831-96c1e2.zip
-#   tags:
-#     - 'angie'
-
-# - name: Extract the archived file to the specified directory
-#   ansible.builtin.unarchive:
-#     src: /tmp/static_site-252831-96c1e2.zip
-#     dest: /opt/mysite
-#     remote_src: true
-#     owner: angie
-#     group: angie
-#   tags:
-#     - 'angie'
-
-# - name: Change permissions of the extracted files
+# - name: Set permissions for directories
 #   ansible.builtin.file:
 #     path: /opt/mysite
 #     state: directory
 #     recurse: yes
-#     mode: "{{ item.mode }}"
-#   with_items:
-#     - { find_type: 'file', mode: '0640' }
-#     - { find_type: 'directory', mode: '0750' }
-#   tags:
-#     - 'angie'
+#     mode: '0750'
+#     selevel: 's0'
+#     serole: 'object_r'
+#     setype: 'httpd_sys_content_t'
+#     seuser: 'system_u'
+#   when: ansible_selinux.status == "enabled"
 
-# - name: Create symbolic link
+# - name: Set permissions for files
+#   ansible.builtin.find:
+#     paths: /opt/mysite
+#     recurse: yes
+#     file_type: file
+#   register: found_files
+
+# - name: Change permissions of files
 #   ansible.builtin.file:
-#     src: /etc/angie/sites-available/default
-#     dest: /etc/angie/sites-enabled/default
-#     state: link
-#   tags:
-#     - 'angie'
+#     path: "{{ item.path }}"
+#     mode: '0640'
+#   with_items: "{{ found_files.files }}"
 
-- name: Restart angie
-  ansible.builtin.systemd:
-    name: angie
-    state: restarted
-    enabled: true
-  tags:
-    - 'angie'
+- name: Change permissions of directories and files
+  ansible.builtin.shell:
+    cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
+
+
+- name: Maintain Angie configurations with validation and rollback
+  block:
+    - name: Copy main Angie configuration template and backup existing config
+      template:
+        src: angie.conf.j2
+        dest: "{{ angie_conf_dest }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_main
+
+    - name: Copy static site configuration template and backup existing config
+      template:
+        src: wordpress.conf.j2
+        dest: "{{ my_static_site.conf}}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_static_site
+
+    - name: Validate Angie configuration
+      command: angie -t
+      when: updated_main is changed or updated_static_site is changed
+      register: validation
+      failed_when: validation.rc != 0
+
+  rescue:
+    - name: Restore previous main Angie configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_conf_dest }}"
+        src: "{{ updated_main['backup_file'] }}"
+      when: updated_main is changed
+
+    - name: Restore previous WordPress site configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_wordpress_site }}"
+        src: "{{ updated_static_site['backup_file'] }}"
+      when: updated_static_site is changed
+
+  always:
+    - name: Clean up main config backup file
+      file:
+        path: "{{ updated_main['backup_file'] }}"
+        state: absent
+      when: updated_main is changed and validation is success
+
+    - name: Clean up WordPress config backup file
+      file:
+        path: "{{ updated_static_site['backup_file'] }}"
+        state: absent
+      when: updated_static_site is changed and validation is success
+
+  notify: Restart angie
+

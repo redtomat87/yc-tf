@@ -1,7 +1,7 @@
 server {
 
 ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen 80 default_server reuseport;
+    listen {{ ansible_default_ipv4.address }}:80 reuseport;
     server_name _;
 ## Включаем использования кэша с соотв. зоной wordpress_preprod 
     proxy_cache wordpress_preprod;

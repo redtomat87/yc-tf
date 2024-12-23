@@ -12,7 +12,7 @@ terraform init
 terraform plan
 terraform apply
 ```
-Положите файл сертификата и ключа в директорию ansible/roles/web_server/files
+Положите файл сертификата и ключа для Angie-pro в директорию ansible/roles/web_server/files
 
 Для установки используйте ansible, чтобы запустить контейнер используйте
 ```

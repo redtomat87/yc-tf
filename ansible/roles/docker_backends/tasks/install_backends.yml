@@ -107,7 +107,7 @@
       notify: Cleanup docker
 
     - name: Create validation script
-      template:
+      ansible.builtin.template:
         src: validate.sh.j2
         dest: /tmp/validate.sh
         mode: '0755'

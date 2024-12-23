@@ -86,10 +86,15 @@ http {
     open_log_file_cache max=100 inactive=60s min_uses=2;
 
 ## Кэш для бэкендов, стандартная конфигурация - микро кэширование
-    proxy_cache_valid 1s;
-    proxy_cache_key $scheme$host$request_uri;
+## proxy_cache_valid 1s;
+## proxy_cache_key $scheme$host$request_uri;
 ## Кэш для зоны wordpress_preprod
-    proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+## proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+
+## Настраиваем acme клиент на получение сертификатов
+    resolver 127.0.0.53 ipv6=off;
+    acme_client rsa    https://acme-v02.api.letsencrypt.org/directory key_type=rsa;
+    acme_client ecdsa  https://acme-v02.api.letsencrypt.org/directory;
 
 
     #gzip  on;

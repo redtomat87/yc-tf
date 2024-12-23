@@ -20,22 +20,62 @@
   when:
     - (local_backup_dir + '/' + item) is directory
 
-- name: Template angie.conf
-  ansible.builtin.template:
-    src: angie.conf.j2
-    dest: "{{ angie_conf_dest }}"
-    mode: '0644'
-    owner: root
-    group: root
-  notify: Restart angie
+- name: Maintain Angie configurations with validation and rollback
+  block:
+    - name: Copy main Angie configuration template and backup existing config
+      template:
+        src: angie.conf.j2
+        dest: "{{ angie_conf_dest }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_main
 
-- name: Template site config
-  ansible.builtin.template:
-    src: redtomat.conf.j2
-    dest: "{{ angie_worpress_site }}"
-    mode: '0644'
-    owner: root
-    group: root
+    - name: Copy redtomat site configuration template and backup existing config
+      template:
+        src: redtomat.conf.j2
+        dest: "{{ angie_wordpress_site }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_wordpress
+
+    - name: Validate Angie configuration
+      command: angie -t
+      when: updated_main is changed or updated_wordpress is changed
+      register: validation
+      failed_when: validation.rc != 0
+
+  rescue:
+    - name: Restore previous main Angie configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_conf_dest }}"
+        src: "{{ updated_main['backup_file'] }}"
+      when: updated_main is changed
+
+    - name: Restore previous WordPress site configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_wordpress_site }}"
+        src: "{{ updated_wordpress['backup_file'] }}"
+      when: updated_wordpress is changed
+
+  always:
+    - name: Clean up main config backup file
+      file:
+        path: "{{ updated_main['backup_file'] }}"
+        state: absent
+      when: updated_main is changed and validation is success
+
+    - name: Clean up WordPress config backup file
+      file:
+        path: "{{ updated_wordpress['backup_file'] }}"
+        state: absent
+      when: updated_wordpress is changed and validation is success
+
   notify: Restart angie
 
 - name: Check and backup ACME directories

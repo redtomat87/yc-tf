@@ -12,6 +12,16 @@
     state: latest
     update_cache: yes
 
+- name: Creating cache directory
+  ansible.builtin.file:
+    path: /opt/cache/worpress
+    state: directory
+    mode: '755'
+    owner: www-data
+    group: www-data
+  tags:
+    - 'angie'
+
 - name: Add Docker GPG apt Key
   ansible.builtin.apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg

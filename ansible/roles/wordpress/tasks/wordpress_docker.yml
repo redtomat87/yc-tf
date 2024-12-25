@@ -1,0 +1,75 @@
+- name: Install required system packages
+  ansible.builtin.apt:
+    pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - gnupg
+      - python3-pip
+      - python3-setuptools
+      - python3-docker
+    state: latest
+    update_cache: yes
+
+- name: Creating cache directory
+  ansible.builtin.file:
+    path: /opt/cache/worpress
+    state: directory
+    mode: '755'
+    owner: www-data
+    group: www-data
+  tags:
+    - 'angie'
+
+- name: Add Docker GPG apt Key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  ansible.builtin.apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+
+- name: Update apt and install docker-ce
+  ansible.builtin.apt:
+    name: docker-ce
+    state: latest
+    update_cache: yes
+
+- name: Ensure Docker service is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Create Docker network
+  community.docker.docker_network:
+    name: balancer_network
+    driver: bridge
+
+- name: Create directory for Docker Compose file
+  ansible.builtin.file:
+    path: /opt/angie
+    state: directory
+    mode: '0755'
+
+- name: Copy Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/angie/docker-compose.yml
+    mode: '0644'
+
+- name: Copying angie.conf
+  ansible.builtin.template:
+    src: angie.conf.j2
+    dest: /opt/angie/angie.conf
+    mode: '0644'
+
+- name: Run Docker Compose
+  ansible.builtin.command:
+    cmd: docker compose -f /opt/angie/docker-compose.yml up -d
+    args:
+      chdir: /opt/angie
+  become: true

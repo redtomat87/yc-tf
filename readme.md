@@ -12,7 +12,7 @@ terraform init
 terraform plan
 terraform apply
 ```
-Положите файл сертификата и ключа в директорию ansible/roles/web_server/files
+Положите файл сертификата и ключа для Angie-pro в директорию ansible/roles/web_server/files
 
 Для установки используйте ansible, чтобы запустить контейнер используйте
 ```
@@ -22,3 +22,19 @@ ansible-playbook -v angie.yml --tags angie-docker
 ```
 ansible-playbook -v angie.yml --tags angie
 ```
+Для установки worpress
+```
+ansible-playbook -v wordpress.yml
+```
+Для установки TLS сертификатов для домена и включения http2/3
+```
+ansible-playbook -v tls.yml 
+```
+Если требуется сделать просто Backup сертификатов
+```
+ansible-playbook -v tls.yml --tags backup
+``` 
+Для установки тестовых бэкендов
+```
+ansible-playbook -v backends.yml
+``` 

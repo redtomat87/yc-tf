@@ -32,3 +32,6 @@ vm_nat                   = true           # Следует ли включить
 
 # Зона доступности в Yandex Cloud
 zone_of_availability      = "ru-central1-a"
+
+# имя DNS зоны
+dns_zone = "mydomain.com."

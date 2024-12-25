@@ -14,6 +14,12 @@ variable "network_name" {
   default = "default"
 }
 
+
+variable "dns_zone" {
+  type    = string
+  default = ""
+}
+
 variable "subnet_name" {
   type    = string
   default = "my-subnet"

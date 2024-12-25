@@ -1,0 +1,17 @@
+- name: Install wordpress
+  hosts: all
+  roles:
+    - role: wordpress
+      vars:
+        installation_type: wordpress
+  tags:
+    - angie
+
+# - name: Install wordpress in docker
+#   hosts: all
+#   roles:
+#     - role: web_server
+#       vars:
+#         installation_type: web_server_docker
+#   tags:
+#     - angie-docker

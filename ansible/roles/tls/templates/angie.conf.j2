@@ -18,6 +18,9 @@ worker_rlimit_nofile 65536;
 error_log  /var/log/angie/error.log error;
 pid        /run/angie.pid;
 
+## Разрешает маршрутизацию пакетов QUIC при помощи eBPF
+quic_bpf on;
+
 events {
 ## Предgоложим, мы на тестовом стенде посмотрели метрики и поняли - кол-во подключений 2000 с учётом прокисруемых
 ## И мы собираемся раскидать их на 2х ядрах и должно получиться 2000, но 100 из-за ограничений лицензии
@@ -43,6 +46,33 @@ http {
     access_log  /var/log/angie/access.log  main;
 
     sendfile        on;
+
+## включаем кэш ssl сессий на стороне сервера и на стороне клиента
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout          28h;
+    ssl_session_tickets           on;
+
+## задаём явно ssl буфер, в примере он 16, а http2_chunk_size 8, тоесть на 2 чанка
+    ssl_buffer_size 16k;
+## разрешаем  ssl_early_data для оптимизации производительности или запрещаем для устойчивости к replay attacks
+    ssl_early_data off;
+## Остальные SSL параметры
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ecdh_curve X25519:prime256v1:secp384r1;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+## Внести в плейбук генерацию dhparam и раскоментировать
+##    ssl_dhparam "/path/to/dhparam"
+
+## включаем ограничение чанков (максимальный размер частей, на которое будет разделяться тело ответа) по 8k должно биться с ssl_buffer_size
+    http2_chunk_size 8k;
+
+
+## Настраиваем acme клиент на получение сертификатов
+    resolver 127.0.0.53 ipv6=off;
+    acme_client rsa    https://acme-v02.api.letsencrypt.org/directory key_type=rsa;
+    acme_client ecdsa  https://acme-v02.api.letsencrypt.org/directory;
 
 ## Разрешаем сброс соединений по таймауту
     reset_timedout_connection on;
@@ -86,15 +116,14 @@ http {
     open_log_file_cache max=100 inactive=60s min_uses=2;
 
 ## Кэш для бэкендов, стандартная конфигурация - микро кэширование
-## proxy_cache_valid 1s;
-## proxy_cache_key $scheme$host$request_uri;
+    proxy_cache_valid 1s;
+    proxy_cache_key $scheme$host$request_uri;
 ## Кэш для зоны wordpress_preprod
-## proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+    proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+## Кэш для зоны wordpress_preprod_fastcgi
+    fastcgi_cache_path /opt/cache/wordpress_preprod_fastcgi levels=1:2 keys_zone=wordpress_preprod_fastcgi:10m inactive=48h max_size=1000m;
+    fastcgi_cache_key $scheme$host$request_uri;
 
-## Настраиваем acme клиент на получение сертификатов
-    resolver 127.0.0.53 ipv6=off;
-    acme_client rsa    https://acme-v02.api.letsencrypt.org/directory key_type=rsa;
-    acme_client ecdsa  https://acme-v02.api.letsencrypt.org/directory;
 
 
     #gzip  on;

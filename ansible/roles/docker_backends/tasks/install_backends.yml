@@ -1,0 +1,142 @@
+- name: Install and configure Docker
+  block:
+    - name: Install initial dependencies
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg
+          - python3-pip
+          - python3-setuptools
+          - python3-docker
+          - docker-compose
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker's GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Get Ubuntu version codename
+      ansible.builtin.command: lsb_release -cs
+      register: ubuntu_codename
+      changed_when: false
+
+    - name: Get system architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: system_architecture
+      changed_when: false
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ system_architecture.stdout }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu
+          {{ ubuntu_codename.stdout }} stable
+        state: present
+        filename: docker
+        update_cache: true
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Ensure Docker service is running and enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+  become: true
+  tags:
+    - install
+
+- name: Configure Docker network and application
+  block:
+    - name: Create Docker network
+      community.docker.docker_network:
+        name: balancer_network
+        driver: bridge
+        state: present
+      register: docker_network
+
+    - name: Prepare application directory
+      ansible.builtin.file:
+        path: /opt/angie
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy Docker Compose file
+      ansible.builtin.template:
+        src: docker_compose_debug.yml.j2
+        dest: /opt/angie/docker-compose.yml
+        mode: '0644'
+        owner: root
+        group: root
+        validate: docker compose -f %s config
+      register: compose_file
+
+    - name: Deploy Docker Compose stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/angie
+        files:
+          - docker-compose.yml
+        state: present
+        pull: missing
+      register: docker_stack
+      notify: Cleanup docker
+  become: true
+  tags:
+    - deploy
+
+- name: Maintain Angie configurations with validation and rollback
+  block:
+    - name: Copy main Angie configuration template and backup existing config
+      template:
+        src: test-backends.conf.j2
+        dest: "{{ backend_site }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_main
+
+    - name: Copy redtomat site configuration template and backup existing config
+      template:
+        src: redtomat.conf.j2
+        dest: "{{ angie_wordpress_site }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_wordpress
+
+    - name: Validate Angie configuration
+      command: angie -t
+      when: updated_main is changed or updated_wordpress is changed
+      register: validation
+      failed_when: validation.rc != 0
+  notify: Restart angie
+  become: true
+  tags:
+    - deploy

@@ -99,7 +99,7 @@
     path: /opt/mysite/
     state: directory
     mode: '0750'
-    owner: root
+    owner: www-data
     group: angie
   tags:
     - 'angie'

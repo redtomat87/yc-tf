@@ -1,0 +1,130 @@
+user  www-data;
+load_module modules/ngx_http_brotli_filter_module.so;
+load_module modules/ngx_http_brotli_static_module.so;
+load_module modules/ngx_http_zstd_filter_module.so;
+load_module modules/ngx_http_zstd_static_module.so;
+
+## Исходя из того, что сервер настраиваем для высоких нагрузок, имеет смысл всю ВМ отдать под Angie
+## выставляем автоматическое количество воркер-процессов.
+worker_processes  auto;
+## Включаем автоматическую привязку рабочих процессов к доступным процессорам
+worker_cpu_affinity auto;
+## Даём 5 минут для graceful завершения работы соединений
+worker_shutdown_timeout 300;
+## Каждое соединение в Nginx, особенно при использовании в качестве обратного прокси-сервера, требует двух файловых дескрипторов: один для приема и один для отправки данных. Следовательно, увеличение worker_rlimit_nofile позволяет каждому рабочему процессу обслуживать больше соединений. 
+worker_rlimit_nofile 65536;
+
+## Понижаем уровень логирования ошибок до error с целью уменьшения потребления ресурсов в условиях hi-load
+error_log  /var/log/angie/error.log error;
+pid        /run/angie.pid;
+
+events {
+## Предgоложим, мы на тестовом стенде посмотрели метрики и поняли - кол-во подключений 2000 с учётом прокисруемых
+## И мы собираемся раскидать их на 2х ядрах и должно получиться 2000, но 100 из-за ограничений лицензии
+    worker_connections 100;
+}
+
+
+http {
+    include       /etc/angie/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    log_format extended '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" rt="$request_time" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'h="$host" sn="$server_name" ru="$request_uri" u="$uri" '
+                        'ucs="$upstream_cache_status" ua="$upstream_addr" us="$upstream_status" '
+                        'uct="$upstream_connect_time" urt="$upstream_response_time"';
+
+    access_log  /var/log/angie/access.log  main;
+
+    sendfile        on;
+
+## Разрешаем сброс соединений по таймауту
+    reset_timedout_connection on;
+
+## Оптимизация TCP
+    tcp_nopush     on;
+    tcp_nodelay    on;
+
+## Таймаут и счётчик для соединений, с целью экономии ресурсов и избежания переполнения пула соединений 
+## закрытие соединений по счётчику необходимо для освобождения памяти/помогает предотвратить чрезмерное потребление.
+    keepalive_timeout  300;
+    keepalive_requests 10000;
+
+## Закрываем соединения для слишком медленных клиентов
+    send_timeout          20s;
+    client_body_timeout   20s;
+    client_header_timeout 20s;
+
+## Если вдруг бэкендам плохеет лучше получить пятисотые и увидеть это, ставим таймауты
+    proxy_connect_timeout 10s;
+    proxy_send_timeout    10s;
+    proxy_read_timeout    20s;
+
+##  помогает уменьшить количество операций записи на диск,
+    proxy_temp_file_write_size   64k;
+## Этот параметр определяет размер памяти, выделенной для хранения HTTP-заголовков ответа
+    proxy_buffer_size             4k;
+## Эти буферы используются для временного хранения тела ответа, пока он не будет передан клиенту.
+    proxy_buffers              64 4k;
+## Этот параметр определяет максимальный размер памяти, который может быть занят буферами, которые в настоящее время используются для передачи данных клиенту.
+    proxy_busy_buffers_size      32k;
+
+## Кэш открытых файловых дескрипторов:
+## Снижение нагрузки на файловую систему: Кэширование файловых и лог-дескрипторов уменьшает количество операций ввода/вывода, что снижает нагрузку на файловую систему и оптимизирует общую производительность сервера.
+## Ускорение обработки запросов: Быстрая доступность кэшированных файлов и логов позволяет Nginx обрабатывать запросы быстрее, поскольку нет необходимости в повторных операциях открытия и проверки файлов.
+    open_file_cache        max=10000 inactive=60s;
+    open_file_cache_valid  30s;
+    open_file_cache_errors on;
+    open_file_cache_min_uses 2;
+## Кэш дескрипторов лог-файлов:
+    open_log_file_cache max=100 inactive=60s min_uses=2;
+
+## Кэш для бэкендов, стандартная конфигурация - микро кэширование
+## proxy_cache_valid 1s;
+## proxy_cache_key $scheme$host$request_uri;
+## Кэш для зоны wordpress_preprod
+proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
+
+## Настраиваем acme клиент на получение сертификатов
+    resolver 127.0.0.53 ipv6=off;
+    acme_client rsa    https://acme-v02.api.letsencrypt.org/directory key_type=rsa;
+    acme_client ecdsa  https://acme-v02.api.letsencrypt.org/directory;
+
+
+    #gzip  on;
+
+    include /etc/angie/http.d/*.conf;
+
+## Включаем brotli для предупакованых файлов и zstd для сжатия на лету
+
+    brotli_static		on;
+    brotli				on;
+    brotli_comp_level	5;
+    brotli_types		text/plain text/css text/xml application/javascript application/json image/x-icon image/svg+xml;
+
+    zstd 			    on;
+    zstd_min_length 	256;
+    zstd_comp_level 	5;
+    #zstd_static 		on;
+    zstd_types			text/plain text/css text/xml application/javascript application/json image/x-icon image/svg+xml;
+
+    map $uri $myheader {
+        ~*\.css$    "text/css";
+        ~*\.js$     "application/javascript";
+        ~*\.jpg$    "image/jpeg";
+        ~*\.jpeg$   "image/jpeg";
+        ~*\.png$    "image/png";
+        ~*\.gif$    "image/gif";
+        default     "text/html";
+    }
+}
+
+#stream {
+#    include /etc/angie/stream.d/*.conf;
+#}

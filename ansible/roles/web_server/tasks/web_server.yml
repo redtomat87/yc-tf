@@ -21,15 +21,9 @@
   tags:
     - 'angie'
 
-
-- name: Apt cache update
-  ansible.builtin.apt:
-    update_cache: true
-  tags:
-    - 'angie'
-
 - name: Installing auxiliary packages
   ansible.builtin.apt:
+    update_cache: true
     name:
       - apt-transport-https
       - lsb-release
@@ -84,6 +78,7 @@
 
 - name: Installing angie-pro
   ansible.builtin.apt:
+    update_cache: true
     name: angie-pro
     state: present
   tags:
@@ -126,31 +121,6 @@
   tags:
     - 'angie'
 
-# - name: Set permissions for directories
-#   ansible.builtin.file:
-#     path: /opt/mysite
-#     state: directory
-#     recurse: yes
-#     mode: '0750'
-#     selevel: 's0'
-#     serole: 'object_r'
-#     setype: 'httpd_sys_content_t'
-#     seuser: 'system_u'
-#   when: ansible_selinux.status == "enabled"
-
-# - name: Set permissions for files
-#   ansible.builtin.find:
-#     paths: /opt/mysite
-#     recurse: yes
-#     file_type: file
-#   register: found_files
-
-# - name: Change permissions of files
-#   ansible.builtin.file:
-#     path: "{{ item.path }}"
-#     mode: '0640'
-#   with_items: "{{ found_files.files }}"
-
 - name: Change permissions of directories and files
   ansible.builtin.shell:
     cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
@@ -170,8 +140,8 @@
 
     - name: Copy static site configuration template and backup existing config
       template:
-        src: wordpress.conf.j2
-        dest: "{{ my_static_site.conf}}"
+        src: my_static_site.conf.j2
+        dest: "{{ angie_static_site }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -192,7 +162,7 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
-    - name: Restore previous WordPress site configuration
+    - name: Restore previous static site configuration
       copy:
         remote_src: true
         dest: "{{ angie_wordpress_site }}"
@@ -201,16 +171,15 @@
 
   always:
     - name: Clean up main config backup file
-      file:
-        path: "{{ updated_main['backup_file'] }}"
+      ansible.builtin.file:
+        path: "{{ updated_main.backup_file if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
-      when: updated_main is changed and validation is success
-
-    - name: Clean up WordPress config backup file
-      file:
-        path: "{{ updated_static_site['backup_file'] }}"
+      when: updated_main is changed and 'backup_file' in updated_main
+    
+    - name: Clean up static site config backup file
+      ansible.builtin.file:
+        path: "{{ updated_static_site.backup_file if updated_static_site is changed and 'backup_file' in updated_static_site else None }}"
         state: absent
-      when: updated_static_site is changed and validation is success
-
+      when: updated_static_site is changed and 'backup_file' in updated_static_site
   notify: Restart angie
 

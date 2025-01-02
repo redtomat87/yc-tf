@@ -66,13 +66,13 @@
   always:
     - name: Clean up main config backup file
       file:
-        path: "{{ updated_main['backup_file'] }}"
+        path: "{{ updated_main['backup_file'] if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
       when: updated_main is changed and validation is success
 
     - name: Clean up WordPress config backup file
       file:
-        path: "{{ updated_wordpress['backup_file'] }}"
+        path: "{{ updated_wordpress['backup_file'] if updated_wordpress is changed and 'backup_file' in updated_wordpress else None }}"
         state: absent
       when: updated_wordpress is changed and validation is success
 

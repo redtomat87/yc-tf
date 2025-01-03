@@ -49,6 +49,8 @@ server {
     # Location для JavaScript файлов
     location /assets/js {
         add_header myheader $myheader;
+        limit_conn addr 1000;
+        limit_conn_log_level error;
     }
 
     # Location для шрифтов
@@ -75,6 +77,13 @@ server {
     location ~ \.(css|js|jpg|jpeg|png|gif)$ {
         set $asset_type "";
         set $asset_path "";
+        # Активируем ограничение по кол-ву подключений
+        limit_conn addr 1000;
+        limit_conn_log_level error;
+        # Активируем ограничение по частоте запросов
+        limit_req zone=lone burst=50;
+        limit_req_log_level error;
+        limit_req_status 503;
 
         if ($uri ~* \.css$) {
             set $asset_type "css";

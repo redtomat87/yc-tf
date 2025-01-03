@@ -106,6 +106,14 @@ server {
     }
     
     location ~ \.php$ {
+        ## Активируем ограничение по количеству подключений
+        limit_conn addr 1000;
+        limit_conn_log_level error;
+        # Активируем ограничение по частоте запросов
+        limit_req zone=lone burst=50;
+        limit_req_log_level error;
+        limit_req_status 503;
+                
         include fastcgi.conf;
         fastcgi_intercept_errors on;
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;

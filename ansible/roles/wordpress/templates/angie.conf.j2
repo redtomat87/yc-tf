@@ -91,6 +91,11 @@ http {
 ## Кэш для зоны wordpress_preprod
 proxy_cache_path /opt/cache/worpress levels=1:2 keys_zone=wordpress_preprod:10m inactive=48h max_size=1000m;
 
+## Создаём зону разделяемой памяти для ограничения кол-ва подключений
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+## Создаём зону разделяемой памяти для ограничения частоты запросов
+limit_req_zone $binary_remote_addr zone=lone:10m rate=100r/s;
+
 ## Настраиваем acme клиент на получение сертификатов
     resolver 127.0.0.53 ipv6=off;
     acme_client rsa    https://acme-v02.api.letsencrypt.org/directory key_type=rsa;

@@ -31,9 +31,19 @@
       - curl
       - gnupg2
       - unzip
+      - fail2ban
     state: present
   tags:
     - 'angie'
+
+- name: Copy template fail2ban jail file
+  ansible.builtin.template:
+  src: fail2ban.local.j2
+  dest: /etc/fail2ban/jail.local
+  owner: root
+  group: root
+  mode: '0600'
+  backup: true
 
 - name: Downloading Angie repo key
   ansible.builtin.get_url:

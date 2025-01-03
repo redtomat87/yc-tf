@@ -34,6 +34,11 @@ server {
     quic_retry on;
 
     location / {
+        # Включаем ограничения доступа Ллбо из локальной сети либо по auth_basic
+        satisfy any;
+        allow 192.168.1.0/24;
+        # закрываем доступ без пароля из остальных сетей
+        deny all;
         # Включаем Auth Basic
         auth_basic "Identify yourself!";
         auth_basic_user_file "{{ angie_base_auth }}";

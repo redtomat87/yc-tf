@@ -34,6 +34,9 @@ server {
     quic_retry on;
 
     location / {
+        # Включаем Auth Basic
+        auth_basic "Identify yourself!";
+        auth_basic_user_file "{{ angie_base_auth }}";
         # Активируем ограничение по частоте запросов
         limit_req zone=lone burst=50;
         limit_req_log_level error;

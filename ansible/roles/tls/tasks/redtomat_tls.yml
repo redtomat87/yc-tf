@@ -2,23 +2,23 @@
   debug:
     msg: "{{ ansible_default_ipv4.address }}"
 
-- name: Synchronize ACME directories
-  ansible.posix.synchronize:
-    src: "{{ local_backup_dir }}/{{ item }}/"
-    dest: "/var/lib/angie/acme/{{ item }}/"
-    mode: push
-    recursive: true
-    checksum: true
-    rsync_opts:
-      - "--chmod=D0700,F0600"
-      - "--rsync-path='sudo rsync'"
-      - "--ignore-existing"
-      - "--update"
-  loop: "{{ acme_dirs }}"
-  delegate_to: localhost
-  become: false
-  when:
-    - (local_backup_dir + '/' + item) is directory
+# - name: Synchronize ACME directories
+#   ansible.posix.synchronize:
+#     src: "{{ local_backup_dir }}/{{ item }}/"
+#     dest: "/var/lib/angie/acme/{{ item }}/"
+#     mode: push
+#     recursive: true
+#     checksum: true
+#     rsync_opts:
+#       - "--chmod=D0700,F0600"
+#       - "--rsync-path='sudo rsync'"
+#       - "--ignore-existing"
+#       - "--update"
+#   loop: "{{ acme_dirs }}"
+#   delegate_to: localhost
+#   become: false
+#   when:
+#     - (local_backup_dir + '/' + item) is directory
 
 - name: Maintain Angie configurations with validation and rollback
   block:

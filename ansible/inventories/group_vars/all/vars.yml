@@ -3,6 +3,7 @@
     angie_cert_dest: /etc/ssl/angie/angie-repo.crt
     angie_key_dest: /etc/ssl/angie/angie-repo.key
     angie_conf_dest: /etc/angie/angie.conf
+    angie_base_auth: /etc/angie/.auth
 
     mysql_root_password: "test"
     mysql_wordpress_db: "wordpress"

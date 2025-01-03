@@ -121,21 +121,49 @@
         group: root
       register: updated_main
 
-    - name: Copy redtomat site configuration template and backup existing config
+    - name: Copy auth file configuration template and backup existing config
       template:
-        src: redtomat.conf.j2
-        dest: "{{ angie_wordpress_site }}"
+        src: .htpasswd.j2
+        dest: "{{ angie_base_auth }}"
         backup: yes
-        mode: '0640'
+        mode: '0600'
         owner: root
         group: root
-      register: updated_wordpress
+      register: updated_auth_file
 
     - name: Validate Angie configuration
       command: angie -t
-      when: updated_main is changed or updated_wordpress is changed
+      when: updated_main is changed or updated_auth_file is changed
       register: validation
       failed_when: validation.rc != 0
+
+  rescue:
+    - name: Restore previous main Angie configuration
+      copy:
+        remote_src: true
+        dest: "{{ backend_site }}"
+        src: "{{ updated_main['backup_file'] }}"
+      when: updated_main is changed
+
+    - name: Restore previous WordPress site configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_base_auth }}"
+        src: "{{ updated_auth_file['backup_file'] }}"
+      when: updated_auth_file is changed
+
+  always:
+    - name: Clean up main config backup file
+      file:
+        path: "{{ updated_main['backup_file'] if updated_main is changed and 'backup_file' in updated_main else None }}"
+        state: absent
+      when: updated_main is changed and validation is success
+
+    - name: Clean up WordPress config backup file
+      file:
+        path: "{{ updated_auth_file['backup_file'] }} if updated_auth_file is changed and 'backup_file' in updated_auth_file else None"
+        state: absent
+      when: updated_auth_file is changed and validation is success
   notify: Restart angie
   become: true
   tags:

@@ -45,3 +45,4 @@ hosts.yaml
 .vscode
 *.zip
 *.pem
+.vault

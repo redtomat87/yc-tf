@@ -1,4 +1,7 @@
 - name: Install and configure Docker
+  become: true
+  tags:
+    - install
   block:
     - name: Install initial dependencies
       ansible.builtin.apt:
@@ -60,16 +63,24 @@
         state: present
         update_cache: true
 
+    - name: Wait for Docker service to be available
+      ansible.builtin.wait_for:
+        path: /var/run/docker.sock
+        state: present
+        delay: 5
+        timeout: 60
+
     - name: Ensure Docker service is running and enabled
+      notify: Cleanup docker
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
-  become: true
-  tags:
-    - install
 
 - name: Configure Docker network and application
+  become: true
+  tags:
+    - deploy
   block:
     - name: Create Docker network
       community.docker.docker_network:
@@ -105,14 +116,15 @@
         pull: missing
       register: docker_stack
       notify: Cleanup docker
+
+- name: Maintain Angie configurations with validation and rollback
+  notify: Restart angie
   become: true
   tags:
     - deploy
-
-- name: Maintain Angie configurations with validation and rollback
   block:
     - name: Copy main Angie configuration template and backup existing config
-      template:
+      ansible.builtin.template:
         src: test-backends.conf.j2
         dest: "{{ backend_site }}"
         backup: true
@@ -122,7 +134,7 @@
       register: updated_main
 
     - name: Copy auth configuration template and backup existing config
-      template:
+      ansible.builtin.template:
         src: .htpasswd.j2
         dest: "{{ angie_base_auth }}"
         backup: true
@@ -132,21 +144,21 @@
       register: updated_auth_file
 
     - name: Validate Angie configuration
-      command: angie -t
+      ansible.builtin.command: angie -t
       when: updated_main is changed or updated_auth_file is changed
       register: validation
       failed_when: validation.rc != 0
 
   rescue:
     - name: Restore previous main Angie configuration
-      copy:
+      ansible.builtin.copy:
         remote_src: true
         dest: "{{ backend_site }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous auth configuration template 
-      copy:
+      ansible.builtin.copy:
         remote_src: true
         dest: "{{ angie_base_auth }}"
         src: "{{ updated_auth_file['backup_file'] }}"
@@ -154,17 +166,13 @@
 
   always:
     - name: Clean up main config backup file
-      file:
+      ansible.builtin.file:
         path: "{{ updated_main['backup_file'] if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
       when: updated_main is changed and validation is success
 
     - name: Clean up auth configuration template 
-      file:
+      ansible.builtin.file:
         path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
         state: absent
       when: updated_auth_file is changed and validation is success
-  notify: Restart angie
-  become: true
-  tags:
-    - deploy

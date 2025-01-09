@@ -10,7 +10,7 @@
     mysql_wordpress_user: "wordpress"
     mysql_wordpress_user_password: "testtest"
 
-    angie_wordpress_site: /etc/angie/http.d/default.conf
+    angie_wordpress_site: /etc/angie/http.d/wordpress.conf
     backend_site: /etc/angie/http.d/backend.conf
     angie_static_site: /etc/angie/http.d/static.conf
 

@@ -64,10 +64,10 @@ server {
 }
 
 upstream test-backend {
-    server 192.168.10.10:9000;
-    server 192.168.10.10:9001;
-    server 192.168.10.10:9002;
-    server 192.168.10.10:9003;
+    server {{ ansible_default_ipv4.address }}:9000;
+    server {{ ansible_default_ipv4.address }}:9001;
+    server {{ ansible_default_ipv4.address }}:9002;
+    server {{ ansible_default_ipv4.address }}:9003;
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
@@ -75,10 +75,10 @@ upstream test-backend {
 
 #upstream test-backend {
 #    hash $request_uri
-#    server 192.168.10.10:9000;
-#    server 192.168.10.10:9001;
-#    server 192.168.10.10:9002;
-#    server 192.168.10.10:9003;
+#    server {{ ansible_default_ipv4.address }}:9000;
+#    server {{ ansible_default_ipv4.address }}:9001;
+#    server {{ ansible_default_ipv4.address }}:9002;
+#    server {{ ansible_default_ipv4.address }}:9003;
 #    keepalive 16;
 #    keepalive_requests 1000;
 #    keepalive_timeout 60s;
@@ -86,10 +86,10 @@ upstream test-backend {
 
 #upstream test-backend {
 #    random; two;
-#    server 192.168.10.10:9000 down;
-#    server 192.168.10.10:9001 backup;
-#    server 192.168.10.10:9002;
-#    server 192.168.10.10:9003;
+#    server {{ ansible_default_ipv4.address }}:9000 down;
+#    server {{ ansible_default_ipv4.address }}:9001 backup;
+#    server {{ ansible_default_ipv4.address }}:9002;
+#    server {{ ansible_default_ipv4.address }}:9003;
 #    keepalive 16;
 #    keepalive_requests 1000;
 #    keepalive_timeout 60s;

@@ -115,20 +115,20 @@
       template:
         src: test-backends.conf.j2
         dest: "{{ backend_site }}"
-        backup: yes
+        backup: true
         mode: '0640'
         owner: root
         group: root
       register: updated_main
 
-    - name: Copy auth file configuration template and backup existing config
+    - name: Copy auth configuration template and backup existing config
       template:
         src: .htpasswd.j2
         dest: "{{ angie_base_auth }}"
-        backup: yes
+        backup: true
         mode: '0600'
-        owner: root
-        group: root
+        owner: www-data
+        group: www-data
       register: updated_auth_file
 
     - name: Validate Angie configuration
@@ -145,7 +145,7 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
-    - name: Restore previous WordPress site configuration
+    - name: Restore previous auth configuration template 
       copy:
         remote_src: true
         dest: "{{ angie_base_auth }}"
@@ -159,9 +159,9 @@
         state: absent
       when: updated_main is changed and validation is success
 
-    - name: Clean up WordPress config backup file
+    - name: Clean up auth configuration template 
       file:
-        path: "{{ updated_auth_file['backup_file'] }} if updated_auth_file is changed and 'backup_file' in updated_auth_file else None"
+        path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
         state: absent
       when: updated_auth_file is changed and validation is success
   notify: Restart angie

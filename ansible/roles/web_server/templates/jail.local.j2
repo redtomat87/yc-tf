@@ -377,7 +377,7 @@ logpath = /opt/openhab/logs/request.log
 # mode = normal
 port    = http,https
 enabled = true
-logpath = /var/log/nginx/*error.log
+logpath = /var/log/angie/*error.log
 findtime = 10
 bantime = 30
 maxretry = 5
@@ -392,7 +392,6 @@ logpath = /var/log/angie/*error.log
 enabled = true
 filter = nginx-limit-req
 action = iptables-multiport[name=ReqLimit, port="http,https", protocol=tcp]
-logpath = /var/log/angie/*error.log
 findtime = 600
 bantime = 7200
 maxretry = 4000

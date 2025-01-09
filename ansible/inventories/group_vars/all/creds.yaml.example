@@ -1,0 +1,5 @@
+users:
+  - username: my_user
+    password: "my_password"
+  - username: another_user
+    password: "another_password"

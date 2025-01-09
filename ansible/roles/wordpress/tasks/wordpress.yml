@@ -105,7 +105,7 @@
 
     - name: Clean up WordPress config backup file
       file:
-        path: "{{ updated_wordpress['backup_file'] }} if updated_wordpress is changed and 'backup_file' in updated_wordpress else None"
+        path: "{{ updated_wordpress['backup_file'] if updated_wordpress is changed and 'backup_file' in updated_wordpress else None }}"
         state: absent
       when: updated_wordpress is changed and validation is success
 

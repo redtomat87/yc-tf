@@ -38,12 +38,12 @@
 
 - name: Copy template fail2ban jail file
   ansible.builtin.template:
-  src: fail2ban.local.j2
-  dest: /etc/fail2ban/jail.local
-  owner: root
-  group: root
-  mode: '0600'
-  backup: true
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
 
 - name: Downloading Angie repo key
   ansible.builtin.get_url:
@@ -113,6 +113,7 @@
     checksum: true
     rsync_opts:
       - "--chmod=D0700,F0600"
+      - "--chown=root:root"
       - "--rsync-path='sudo rsync'"
       - "--ignore-existing"
       - "--update"
@@ -122,92 +123,92 @@
   when:
     - (local_backup_dir + '/' + item) is directory
 
-# - name: Creating site dir
-#   ansible.builtin.file:
-#     path: /opt/mysite/
-#     state: directory
-#     mode: '0750'
-#     owner: www-data
-#     group: angie
-#   tags:
-#     - 'angie'
+- name: Creating site dir
+  ansible.builtin.file:
+    path: /opt/mysite/
+    state: directory
+    mode: '0750'
+    owner: www-data
+    group: angie
+  tags:
+    - 'angie'
 
-# - name: Copy the archived file to the remote host
-#   ansible.builtin.copy:
-#     src: static_site-252831-96c1e2.zip
-#     dest: /tmp/static_site-252831-96c1e2.zip
-#   tags:
-#     - 'angie'
+- name: Copy the archived file to the remote host
+  ansible.builtin.copy:
+    src: static_site-252831-96c1e2.zip
+    dest: /tmp/static_site-252831-96c1e2.zip
+  tags:
+    - 'angie'
 
-# - name: Extract the archived file to the specified directory with specific permissions
-#   ansible.builtin.unarchive:
-#     src: /tmp/static_site-252831-96c1e2.zip
-#     dest: /opt/mysite
-#     remote_src: true
-#     owner: www-data
-#     group: www-data
-#   tags:
-#     - 'angie'
+- name: Extract the archived file to the specified directory with specific permissions
+  ansible.builtin.unarchive:
+    src: /tmp/static_site-252831-96c1e2.zip
+    dest: /opt/mysite
+    remote_src: true
+    owner: www-data
+    group: www-data
+  tags:
+    - 'angie'
 
-# - name: Change permissions of directories and files
-#   ansible.builtin.shell:
-#     cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
+- name: Change permissions of directories and files
+  ansible.builtin.shell:
+    cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
 
 
-# - name: Maintain Angie configurations with validation and rollback
-#   block:
-#     - name: Copy main Angie configuration template and backup existing config
-#       template:
-#         src: angie.conf.j2
-#         dest: "{{ angie_conf_dest }}"
-#         backup: yes
-#         mode: '0640'
-#         owner: root
-#         group: root
-#       register: updated_main
+- name: Maintain Angie configurations with validation and rollback
+  block:
+    - name: Copy main Angie configuration template and backup existing config
+      template:
+        src: angie.conf.j2
+        dest: "{{ angie_conf_dest }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_main
 
-#     - name: Copy static site configuration template and backup existing config
-#       template:
-#         src: my_static_site.conf.j2
-#         dest: "{{ angie_static_site }}"
-#         backup: yes
-#         mode: '0640'
-#         owner: root
-#         group: root
-#       register: updated_static_site
+    - name: Copy static site configuration template and backup existing config
+      template:
+        src: my_static_site.conf.j2
+        dest: "{{ angie_static_site }}"
+        backup: yes
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_static_site
 
-#     - name: Validate Angie configuration
-#       command: angie -t
-#       when: updated_main is changed or updated_static_site is changed
-#       register: validation
-#       failed_when: validation.rc != 0
+    - name: Validate Angie configuration
+      command: angie -t
+      when: updated_main is changed or updated_static_site is changed
+      register: validation
+      failed_when: validation.rc != 0
 
-#   rescue:
-#     - name: Restore previous main Angie configuration
-#       copy:
-#         remote_src: true
-#         dest: "{{ angie_conf_dest }}"
-#         src: "{{ updated_main['backup_file'] }}"
-#       when: updated_main is changed
+  rescue:
+    - name: Restore previous main Angie configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_conf_dest }}"
+        src: "{{ updated_main['backup_file'] }}"
+      when: updated_main is changed
 
-#     - name: Restore previous static site configuration
-#       copy:
-#         remote_src: true
-#         dest: "{{ angie_wordpress_site }}"
-#         src: "{{ updated_static_site['backup_file'] }}"
-#       when: updated_static_site is changed
+    - name: Restore previous static site configuration
+      copy:
+        remote_src: true
+        dest: "{{ angie_wordpress_site }}"
+        src: "{{ updated_static_site['backup_file'] }}"
+      when: updated_static_site is changed
 
-#   always:
-#     - name: Clean up main config backup file
-#       ansible.builtin.file:
-#         path: "{{ updated_main.backup_file if updated_main is changed and 'backup_file' in updated_main else None }}"
-#         state: absent
-#       when: updated_main is changed and 'backup_file' in updated_main
+  always:
+    - name: Clean up main config backup file
+      ansible.builtin.file:
+        path: "{{ updated_main.backup_file if updated_main is changed and 'backup_file' in updated_main else None }}"
+        state: absent
+      when: updated_main is changed and 'backup_file' in updated_main
     
-#     - name: Clean up static site config backup file
-#       ansible.builtin.file:
-#         path: "{{ updated_static_site.backup_file if updated_static_site is changed and 'backup_file' in updated_static_site else None }}"
-#         state: absent
-#       when: updated_static_site is changed and 'backup_file' in updated_static_site
-#   notify: Restart angie
+    - name: Clean up static site config backup file
+      ansible.builtin.file:
+        path: "{{ updated_static_site.backup_file if updated_static_site is changed and 'backup_file' in updated_static_site else None }}"
+        state: absent
+      when: updated_static_site is changed and 'backup_file' in updated_static_site
+  notify: Restart angie
 

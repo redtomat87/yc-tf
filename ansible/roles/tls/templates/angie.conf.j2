@@ -124,6 +124,10 @@ http {
     fastcgi_cache_path /opt/cache/wordpress_preprod_fastcgi levels=1:2 keys_zone=wordpress_preprod_fastcgi:10m inactive=48h max_size=1000m;
     fastcgi_cache_key $scheme$host$request_uri;
 
+## Создаём зону разделяемой памяти для ограничения кол-ва подключений
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+## Создаём зону разделяемой памяти для ограничения частоты запросов
+limit_req_zone $binary_remote_addr zone=lone:10m rate=100r/s;
 
 
     #gzip  on;

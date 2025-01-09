@@ -34,24 +34,40 @@ server {
     quic_retry on;
 
     location / {
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
+        # Включаем ограничения доступа Ллбо из локальной сети либо по auth_basic
+        satisfy any;
+        allow 192.168.1.0/24;
+        # закрываем доступ без пароля из остальных сетей
+        deny all;
+        # Включаем Auth Basic
+        auth_basic "Identify yourself!";
+        auth_basic_user_file "{{ angie_base_auth }}";
+        # Активируем ограничение по частоте запросов
+        limit_req zone=lone burst=50;
+        limit_req_log_level error;
+        limit_req_status 503;
+        # Активируем ограничение по кол-ву подключений
+        limit_conn addr 1000;
+        limit_conn_log_level error;
 
-      proxy_http_version 1.1;
-      proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
 
-      proxy_pass http://test-backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        proxy_pass http://test-backend;
 
     }
 }
 
 upstream test-backend {
-    server 192.168.10.10:9000;
-    server 192.168.10.10:9001;
-    server 192.168.10.10:9002;
-    server 192.168.10.10:9003;
+    server {{ ansible_default_ipv4.address }}:9000;
+    server {{ ansible_default_ipv4.address }}:9001;
+    server {{ ansible_default_ipv4.address }}:9002;
+    server {{ ansible_default_ipv4.address }}:9003;
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
@@ -59,10 +75,10 @@ upstream test-backend {
 
 #upstream test-backend {
 #    hash $request_uri
-#    server 192.168.10.10:9000;
-#    server 192.168.10.10:9001;
-#    server 192.168.10.10:9002;
-#    server 192.168.10.10:9003;
+#    server {{ ansible_default_ipv4.address }}:9000;
+#    server {{ ansible_default_ipv4.address }}:9001;
+#    server {{ ansible_default_ipv4.address }}:9002;
+#    server {{ ansible_default_ipv4.address }}:9003;
 #    keepalive 16;
 #    keepalive_requests 1000;
 #    keepalive_timeout 60s;
@@ -70,10 +86,10 @@ upstream test-backend {
 
 #upstream test-backend {
 #    random; two;
-#    server 192.168.10.10:9000 down;
-#    server 192.168.10.10:9001 backup;
-#    server 192.168.10.10:9002;
-#    server 192.168.10.10:9003;
+#    server {{ ansible_default_ipv4.address }}:9000 down;
+#    server {{ ansible_default_ipv4.address }}:9001 backup;
+#    server {{ ansible_default_ipv4.address }}:9002;
+#    server {{ ansible_default_ipv4.address }}:9003;
 #    keepalive 16;
 #    keepalive_requests 1000;
 #    keepalive_timeout 60s;

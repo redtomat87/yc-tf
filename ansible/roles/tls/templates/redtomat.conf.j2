@@ -106,6 +106,10 @@ server {
     }
     
     location ~ \.php$ {
+        ## Эта директива передает HOST в PHP
+        fastcgi_param HOST $host;
+        # Это директива передает SERVER_NAME в PHP
+        fastcgi_param SERVER_NAME $server_name;
         ## Активируем ограничение по количеству подключений
         limit_conn addr 1000;
         limit_conn_log_level error;

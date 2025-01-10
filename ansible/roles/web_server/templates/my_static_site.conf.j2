@@ -7,7 +7,7 @@ server {
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
 
-    server_name                    {{ static_site_url }};
+    server_name                    {{ sites.static.url }};
 
     charset utf-8;
 

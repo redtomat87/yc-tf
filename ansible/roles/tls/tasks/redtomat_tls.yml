@@ -4,7 +4,7 @@
 
 # - name: Synchronize ACME directories
 #   ansible.posix.synchronize:
-#     src: "{{ local_backup_dir }}/{{ item }}/"
+#     src: "{{ local_backup.dir }}/{{ item }}/"
 #     dest: "/var/lib/angie/acme/{{ item }}/"
 #     mode: push
 #     recursive: true
@@ -14,18 +14,18 @@
 #       - "--rsync-path='sudo rsync'"
 #       - "--ignore-existing"
 #       - "--update"
-#   loop: "{{ acme_dirs }}"
+#   loop: "{{ acme.dirs }}"
 #   delegate_to: localhost
 #   become: false
 #   when:
-#     - (local_backup_dir + '/' + item) is directory
+#     - (local_backup.dir + '/' + item) is directory
 
 - name: Maintain Angie configurations with validation and rollback
   block:
     - name: Copy main Angie configuration template and backup existing config
       template:
         src: angie.conf.j2
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -35,7 +35,7 @@
     - name: Copy redtomat site configuration template and backup existing config
       template:
         src: redtomat.conf.j2
-        dest: "{{ angie_wordpress_site }}"
+        dest: "{{ sites.wordpress.site_agnie_config_path }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -52,14 +52,14 @@
     - name: Restore previous main Angie configuration
       copy:
         remote_src: true
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous WordPress site configuration
       copy:
         remote_src: true
-        dest: "{{ angie_wordpress_site }}"
+        dest: "{{ sites.wordpress.site_agnie_config_path }}"
         src: "{{ updated_wordpress['backup_file'] }}"
       when: updated_wordpress is changed
 
@@ -84,12 +84,12 @@
       ansible.builtin.find:
         paths: /var/lib/angie/acme
         file_type: directory
-        patterns: "{{ acme_dirs }}"
+        patterns: "{{ acme.dirs }}"
       register: remote_dirs_backup
 
     - name: Create local backup directory if it doesn't exist
       ansible.builtin.file:
-        path: "{{ local_backup_dir }}"
+        path: "{{ local_backup.dir }}"
         state: directory
         mode: '0755'
       delegate_to: localhost
@@ -98,7 +98,7 @@
     - name: Backup ACME directories to local host
       ansible.builtin.synchronize:
         src: "{{ item.path }}/"
-        dest: "{{ local_backup_dir }}/{{ item.path | basename }}/"
+        dest: "{{ local_backup.dir }}/{{ item.path | basename }}/"
         mode: pull
         recursive: true
         use_ssh_args: true

@@ -16,8 +16,8 @@
     group: nogroup
     mode: "{{ item.mode }}"
   loop:
-    - { src: "files/angie-repo.crt", dest: "/etc/ssl/angie/angie-repo.crt", mode: "0600" }
-    - { src: "files/angie-repo.key", dest: "/etc/ssl/angie/angie-repo.key", mode: "0600" }
+      - { src: "{{ angie.cert_src }}", dest: "{{ angie.cert_dest }}", mode: "0600" }
+      - { src: "{{ angie.key_src }}", dest: "{{ angie.key_dest }}", mode: "0600" }
   tags:
     - 'angie'
 
@@ -124,7 +124,7 @@
 
 - name: Synchronize ACME directories
   ansible.posix.synchronize:
-    src: "{{ local_backup_dir }}/{{ item }}/"
+    src: "{{ local_backup.dir }}/{{ item }}/"
     dest: "/var/lib/angie/acme/{{ item }}/"
     mode: push
     recursive: true
@@ -135,11 +135,11 @@
       - "--rsync-path='sudo rsync'"
       - "--ignore-existing"
       - "--update"
-  loop: "{{ acme_dirs }}"
+  loop: "{{ acme.dirs }}"
   delegate_to: localhost
   become: false
   when:
-    - (local_backup_dir + '/' + item) is directory
+    - (local_backup.dir + '/' + item) is directory
 
 - name: Creating site dir
   ansible.builtin.file:
@@ -178,7 +178,7 @@
     - name: Copy main Angie configuration template and backup existing config
       template:
         src: angie.conf.j2
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -188,7 +188,7 @@
     - name: Copy static site configuration template and backup existing config
       template:
         src: my_static_site.conf.j2
-        dest: "{{ angie_static_site }}"
+        dest: "{{ sites.static.site_agnie_config_path }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -205,14 +205,14 @@
     - name: Restore previous main Angie configuration
       copy:
         remote_src: true
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous static site configuration
       copy:
         remote_src: true
-        dest: "{{ angie_static_site }}"
+        dest: "{{ sites.static.site_agnie_config_path }}"
         src: "{{ updated_static_site['backup_file'] }}"
       when: updated_static_site is changed
 

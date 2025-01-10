@@ -4,7 +4,7 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ sites.tests-backend.url }};
+    server_name {{ sites.tests_backend.url }};
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;

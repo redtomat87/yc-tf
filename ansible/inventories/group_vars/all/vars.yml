@@ -4,13 +4,13 @@ angie:
   cert_dest: /etc/ssl/angie/angie-repo.crt
   key_dest: /etc/ssl/angie/angie-repo.key
   conf_dest: /etc/angie/angie.conf
-  base_auth: /etc/angie/.auth"
+  base_auth: /etc/angie/.auth
 
 sites:
   wordpress:
     site_agnie_config_path: /etc/angie/http.d/wordpress.conf
     url: "angie.redtomat.ru"
-  tests-backend:
+  tests_backend:
     site_agnie_config_path: /etc/angie/http.d/backend.conf
     url: "angie-backend.redtomat.ru"
   static:

@@ -18,7 +18,6 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     query: SELECT 1
   register: mysql_socket_auth
-  ignore_errors: true
 
 - name: Set MySQL root password for the first time (socket auth)
   community.mysql.mysql_user:
@@ -55,21 +54,9 @@
     - mysql_root_password != ""
     - mysql_root_auth_method.failed or (mysql_root_auth_method.query_result[0][0] != 'mysql_native_password')
 
-- name: Display MySQL service status (optional)
+- name: Display MySQL service status
   ansible.builtin.debug:
     msg: "MySQL service is {{ mysql_service_status.status.ActiveState }}"
-
-- name: Test MySQL connection
-  community.mysql.mysql_ping:
-    login_user: root
-    login_password: "{{ mysql_root_password }}"
-  register: mysql_connection_test
-  failed_when: mysql_connection_test.ping != "pong"
-  changed_when: false
-
-- name: Display MySQL connection status (optional)
-  ansible.builtin.debug:
-    msg: "MySQL connection is {{ mysql_connection_test.ping }}"
 
 - name: Remove anonymous MySQL users
   community.mysql.mysql_user:
@@ -79,7 +66,6 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
     login_password: "{{ mysql_root_password }}"
-  when: mysql_connection_test is success
 
 - name: Remove test database
   community.mysql.mysql_db:
@@ -88,7 +74,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
     login_password: "{{ mysql_root_password }}"
-  when: mysql_connection_test is success
+
 
 - name: Create MySQL database for WordPress
   community.mysql.mysql_db:
@@ -97,7 +83,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
     login_password: "{{ mysql_root_password }}"
-  when: mysql_connection_test is success
+
 
 - name: Create MySQL user for WordPress with remote access
   community.mysql.mysql_user:
@@ -109,7 +95,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
     login_password: "{{ mysql_root_password }}"
-  when: mysql_connection_test is success
+
 
 - name: Flush MySQL privileges
   community.mysql.mysql_query:
@@ -117,7 +103,7 @@
     login_user: root
     login_password: "{{ mysql_root_password }}"
     query: FLUSH PRIVILEGES;
-  when: mysql_connection_test is success
+
 
 - name: Configure MySQL bind addresses
   community.general.ini_file:

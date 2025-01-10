@@ -4,7 +4,7 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name angie-backend.redtomat.ru;
+    server_name {{ test_backends_url }};
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;

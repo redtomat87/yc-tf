@@ -11,7 +11,7 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic reuseport;
 
-    server_name angie.redtomat.ru;
+    server_name {{ wordpress_site_url }};
 
 
 

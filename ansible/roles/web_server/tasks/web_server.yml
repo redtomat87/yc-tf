@@ -104,6 +104,24 @@
   tags:
     - 'angie'
 
+- name: Check if dafault angie config exists
+  ansible.builtin.stat:
+    path: "/etc/angie/http.d/default.conf"
+  register: check_file_name
+
+- name: make back default angie config
+  ansible.builtin.copy:
+    remote_src: yes
+    src: "/etc/angie/http.d/default.conf"
+    dest: "/etc/angie/http.d/default.conf.old"
+  when: check_file_name.stat.exists
+
+- name: Remove old default angie file
+  ansible.builtin.file:
+    path: "/etc/angie/http.d/default.conf"
+    state: absent
+  when: check_file_name.stat.exists
+
 - name: Synchronize ACME directories
   ansible.posix.synchronize:
     src: "{{ local_backup_dir }}/{{ item }}/"
@@ -194,7 +212,7 @@
     - name: Restore previous static site configuration
       copy:
         remote_src: true
-        dest: "{{ angie_wordpress_site }}"
+        dest: "{{ angie_static_site }}"
         src: "{{ updated_static_site['backup_file'] }}"
       when: updated_static_site is changed
 

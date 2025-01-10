@@ -1,8 +1,10 @@
 <?php
+define( 'WP_SITEURL', 'https://{{ wordpress_site_url }}' );
+define( 'WP_HOME', 'https://{{ wordpress_site_url }}' );
 define('DB_NAME', '{{ mysql_wordpress_db }}');
 define('DB_USER', '{{ mysql_wordpress_user }}');
 define('DB_PASSWORD', '{{ mysql_wordpress_user_password }}');
-define('DB_HOST', '{{ ansible_default_ipv4.address }}:3306');
+define('DB_HOST', '{{ ansible_default_ipv4.address }}');
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');
 # Обязательно меняйте соль! Сгенерить можно здесь https://api.wordpress.org/secret-key/1.1/salt/
@@ -16,9 +18,17 @@ define('LOGGED_IN_SALT',   ']/q$Om^v|{dd`+lSWP,:Vpw.g|ppHGd3lvHT+yFEM::eCvoju3(g
 define('NONCE_SALT',       'z0upjjWvN<wBtuO9qfHK2n+/dJA1/9T1r36[|=6EnLiMY*r>D&._[v*7&J ;FmnF');
 define('WP_ALLOW_REPAIR', true);
 
-$table_prefix = 'wp_';
+$table_prefix = 'mywp_';
 
-define('WP_DEBUG', false);
+define( 'WP_DISABLE_FATAL_ERROR_HANDLER', true );
+define( 'WP_DEBUG', true );
+define( 'WP_DEBUG_DISPLAY', true );
+
+define( 'WP_MEMORY_LIMIT', '96M' );
+define( 'WP_MAX_MEMORY_LIMIT', '128M' );
+define( 'WP_CACHE', true );
+
+define( 'EMPTY_TRASH_DAYS', 30 ); 
 
 if ( ! defined( 'ABSPATH' ) ) {
         define( 'ABSPATH', dirname( __FILE__ ) . '/' );

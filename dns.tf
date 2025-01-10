@@ -33,3 +33,30 @@ resource "yandex_dns_recordset" "vm-dns-static" {
   ttl     = 300
   data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
 }
+
+resource "yandex_dns_recordset" "vm-dns-keycloak" {
+  count   = length(var.vm)
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  name    = "auth.${var.dns_zone}"
+  type    = "A"
+  ttl     = 300
+  data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
+}
+
+resource "yandex_dns_recordset" "vm-dns-prometheus" {
+  count   = length(var.vm)
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  name    = "prometheus.${var.dns_zone}"
+  type    = "A"
+  ttl     = 300
+  data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
+}
+
+resource "yandex_dns_recordset" "vm-dns-grafana" {
+  count   = length(var.vm)
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  name    = "grafana.${var.dns_zone}"
+  type    = "A"
+  ttl     = 300
+  data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
+}

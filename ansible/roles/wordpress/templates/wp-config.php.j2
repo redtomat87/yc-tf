@@ -5,6 +5,8 @@ define('DB_NAME', '{{ mysql.wordpress.db }}');
 define('DB_USER', '{{ mysql.wordpress.user }}');
 define('DB_PASSWORD', '{{ mysql.wordpress.user_password }}');
 define('DB_HOST', '{{ ansible_default_ipv4.address }}');
+define('FORCE_SSL_LOGIN', true);
+define('FORCE_SSL_ADMIN', true);
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');
 # Обязательно меняйте соль! Сгенерить можно здесь https://api.wordpress.org/secret-key/1.1/salt/
@@ -16,7 +18,7 @@ define('AUTH_SALT',        'h8wDO5!;Ls# kk!.AA0^dCO^g>!W|u-96HdD-kPcrWE{Dh/X;]!i
 define('SECURE_AUTH_SALT', 'r^ij4V.).x`+?biS+WLWx|!j!#$t5wG#l*_G+^WQw,N|VXm(&,uB2|-6QT Hjc*8');
 define('LOGGED_IN_SALT',   ']/q$Om^v|{dd`+lSWP,:Vpw.g|ppHGd3lvHT+yFEM::eCvoju3(g[?RMs%!-88|0');
 define('NONCE_SALT',       'z0upjjWvN<wBtuO9qfHK2n+/dJA1/9T1r36[|=6EnLiMY*r>D&._[v*7&J ;FmnF');
-define('WP_ALLOW_REPAIR', true);
+
 
 $table_prefix = 'mywp_';
 

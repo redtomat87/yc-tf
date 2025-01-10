@@ -3,3 +3,10 @@ users:
     password: "my_password"
   - username: another_user
     password: "another_password"
+
+mysql:
+  root_password: "test"
+  wordpress:
+    db: "wordpress"
+    user: "wordpress"
+    user_password: "testtest"

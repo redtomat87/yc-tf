@@ -4,7 +4,7 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ test_backends_url }};
+    server_name {{ sites.tests-backend.url }};
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
@@ -41,7 +41,7 @@ server {
         deny all;
         # Включаем Auth Basic
         auth_basic "Identify yourself!";
-        auth_basic_user_file "{{ angie_base_auth }}";
+        auth_basic_user_file "{{ angie.base_auth }}";
         # Активируем ограничение по частоте запросов
         limit_req zone=lone burst=50;
         limit_req_log_level error;

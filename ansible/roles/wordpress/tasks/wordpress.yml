@@ -58,7 +58,7 @@
     - name: Copy main Angie configuration template and backup existing config
       template:
         src: angie.conf.j2
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -68,7 +68,7 @@
     - name: Copy WordPress site configuration template and backup existing config
       template:
         src: wordpress.conf.j2
-        dest: "{{ angie_wordpress_site }}"
+        dest: "{{ sites.wordpress.site_agnie_config_path }}"
         backup: yes
         mode: '0640'
         owner: root
@@ -85,14 +85,14 @@
     - name: Restore previous main Angie configuration
       copy:
         remote_src: true
-        dest: "{{ angie_conf_dest }}"
+        dest: "{{ angie.conf_dest }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous WordPress site configuration
       copy:
         remote_src: true
-        dest: "{{ angie_wordpress_site }}"
+        dest: "{{ sites.wordpress.site_agnie_config_path }}"
         src: "{{ updated_wordpress['backup_file'] }}"
       when: updated_wordpress is changed
 

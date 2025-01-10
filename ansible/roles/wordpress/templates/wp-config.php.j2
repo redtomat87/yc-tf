@@ -1,9 +1,9 @@
 <?php
-define( 'WP_SITEURL', 'https://{{ wordpress_site_url }}' );
-define( 'WP_HOME', 'https://{{ wordpress_site_url }}' );
-define('DB_NAME', '{{ mysql_wordpress_db }}');
-define('DB_USER', '{{ mysql_wordpress_user }}');
-define('DB_PASSWORD', '{{ mysql_wordpress_user_password }}');
+define( 'WP_SITEURL', 'https://{{ sites.wordpress.url }}' );
+define( 'WP_HOME', 'https://{{ sites.wordpress.url }}' );
+define('DB_NAME', '{{ mysql.wordpress.db }}');
+define('DB_USER', '{{ mysql.wordpress.user }}');
+define('DB_PASSWORD', '{{ mysql.wordpress.user_password }}');
 define('DB_HOST', '{{ ansible_default_ipv4.address }}');
 define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');

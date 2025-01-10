@@ -1,24 +1,26 @@
-    angie_cert_src: "{{ playbook_dir }}/certs/angie-repo.crt"
-    angie_key_src: "{{ playbook_dir }}/certs/angie-repo.key"
-    angie_cert_dest: /etc/ssl/angie/angie-repo.crt
-    angie_key_dest: /etc/ssl/angie/angie-repo.key
-    angie_conf_dest: /etc/angie/angie.conf
-    angie_base_auth: /etc/angie/.auth
+angie:
+  cert_src: angie-repo.crt
+  key_src: angie-repo.key
+  cert_dest: /etc/ssl/angie/angie-repo.crt
+  key_dest: /etc/ssl/angie/angie-repo.key
+  conf_dest: /etc/angie/angie.conf
+  base_auth: /etc/angie/.auth"
 
-    mysql_root_password: "test"
-    mysql_wordpress_db: "wordpress"
-    mysql_wordpress_user: "wordpress"
-    mysql_wordpress_user_password: "testtest"
+sites:
+  wordpress:
+    site_agnie_config_path: /etc/angie/http.d/wordpress.conf
+    url: "angie.redtomat.ru"
+  tests-backend:
+    site_agnie_config_path: /etc/angie/http.d/backend.conf
+    url: "angie-backend.redtomat.ru"
+  static:
+    site_agnie_config_path: /etc/angie/http.d/static.conf
+    url: "static.redtomat.ru"
 
-    angie_wordpress_site: /etc/angie/http.d/wordpress.conf
-    backend_site: /etc/angie/http.d/backend.conf
-    angie_static_site: /etc/angie/http.d/static.conf
-    
-    wordpress_site_url: "angie.redtomat.ru"
-    static_site_url: "static.redtomat.ru"
-    test_backends_url: "angie-backend.redtomat.ru"
-
-    acme_dirs:
+acme:
+  dirs:
     - rsa
     - ecdsa
-    local_backup_dir: "{{ playbook_dir }}/files/cert_backup"
+
+local_backup:
+  dir: "{{ playbook_dir }}/files/cert_backup"

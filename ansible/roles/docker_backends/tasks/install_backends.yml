@@ -126,7 +126,7 @@
     - name: Copy main Angie configuration template and backup existing config
       ansible.builtin.template:
         src: test-backends.conf.j2
-        dest: "{{ backend_site }}"
+        dest: "{{ sites.tests-backend.site_agnie_config_path }}"
         backup: true
         mode: '0640'
         owner: root
@@ -136,7 +136,7 @@
     - name: Copy auth configuration template and backup existing config
       ansible.builtin.template:
         src: .htpasswd.j2
-        dest: "{{ angie_base_auth }}"
+        dest: "{{ angie.base_auth }}"
         backup: true
         mode: '0600'
         owner: www-data
@@ -153,14 +153,14 @@
     - name: Restore previous main Angie configuration
       ansible.builtin.copy:
         remote_src: true
-        dest: "{{ backend_site }}"
+        dest: "{{ sites.tests-backend.site_agnie_config_path }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous auth configuration template 
       ansible.builtin.copy:
         remote_src: true
-        dest: "{{ angie_base_auth }}"
+        dest: "{{ angie.base_auth }}"
         src: "{{ updated_auth_file['backup_file'] }}"
       when: updated_auth_file is changed
 

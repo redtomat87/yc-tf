@@ -23,19 +23,19 @@
   community.mysql.mysql_user:
     name: root
     host: localhost
-    password: "{{ mysql_root_password }}"
+    password: "{{ mysql.root_password }}"
     login_unix_socket: /var/run/mysqld/mysqld.sock
     priv: '*.*:ALL,GRANT'
     plugin: mysql_native_password
     state: present
   when:
     - mysql_socket_auth is success
-    - mysql_root_password != ""
+    - mysql.root_password != ""
 
 - name: Check current MySQL root auth method
   community.mysql.mysql_query:
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
     query: SELECT plugin FROM mysql.user WHERE User='root' AND Host='localhost';
   register: mysql_root_auth_method
   ignore_errors: true
@@ -44,14 +44,14 @@
   community.mysql.mysql_user:
     name: root
     host: localhost
-    password: "{{ mysql_root_password }}"
+    password: "{{ mysql.root_password }}"
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
     priv: '*.*:ALL,GRANT'
     plugin: mysql_native_password
     state: present
   when:
-    - mysql_root_password != ""
+    - mysql.root_password != ""
     - mysql_root_auth_method.failed or (mysql_root_auth_method.query_result[0][0] != 'mysql_native_password')
 
 - name: Display MySQL service status
@@ -65,7 +65,7 @@
     state: absent
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
 
 - name: Remove test database
   community.mysql.mysql_db:
@@ -73,35 +73,35 @@
     state: absent
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
 
 
 - name: Create MySQL database for WordPress
   community.mysql.mysql_db:
-    name: "{{ mysql_wordpress_db }}"
+    name: "{{ mysql.wordpress.db }}"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
 
 
 - name: Create MySQL user for WordPress with remote access
   community.mysql.mysql_user:
-    name: "{{ mysql_wordpress_user }}"
+    name: "{{ mysql.wordpress.user }}"
     host: '%'
-    password: "{{ mysql_wordpress_user_password }}"
-    priv: "{{ mysql_wordpress_db }}.*:ALL"
+    password: "{{ mysql.wordpress.user_password }}"
+    priv: "{{ mysql.wordpress.db }}.*:ALL"
     state: present
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
 
 
 - name: Flush MySQL privileges
   community.mysql.mysql_query:
     login_unix_socket: /var/run/mysqld/mysqld.sock
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{ mysql.root_password }}"
     query: FLUSH PRIVILEGES;
 
 

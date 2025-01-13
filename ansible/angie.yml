@@ -1,4 +1,4 @@
-- name: Install Angie Pro
+- name: Install Angie Open Source
   hosts: all
   roles:
     - role: web_server
@@ -6,6 +6,15 @@
         installation_type: web_server
   tags:
     - angie
+
+- name: Install Angie Pro
+  hosts: all
+  roles:
+    - role: web_server
+      vars:
+        installation_type: web_server_pro
+  tags:
+    - angie-pro
 
 - name: Install Angie in docker
   hosts: all

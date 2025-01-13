@@ -16,25 +16,25 @@ terraform apply
 
 Для установки используйте ansible, чтобы запустить контейнер используйте
 ```
-ansible-playbook -v angie.yml --tags angie-docker
+ansible-playbook angie.yml --tags angie-docker
 ```
-Для того чтобы установить из репозиториев Angie-pro
+Для того чтобы установить из репозиториев Angie-pro, *для установки версии PRO требуется добавить вш файл сертификата и ключа в директорию ./ansible/roles/web_server/files
 ```
-ansible-playbook -v angie.yml --tags angie
+ansible-playbook angie.yml --tags angie-pro
 ```
 Для установки worpress
 ```
-ansible-playbook -v wordpress.yml
+ansible-playbook wordpress.yml
 ```
 Для установки TLS сертификатов для домена и включения http2/3
 ```
-ansible-playbook -v tls.yml 
+ansible-playbook tls.yml 
 ```
 Если требуется сделать просто Backup сертификатов
 ```
-ansible-playbook -v tls.yml --tags backup
+ansible-playbook tls.yml --tags backup
 ``` 
 Для установки тестовых бэкендов
 ```
-ansible-playbook -v backends.yml
+ansible-playbook backends.yml
 ``` 

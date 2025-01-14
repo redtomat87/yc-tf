@@ -106,7 +106,7 @@
       ansible.builtin.service:
         name: docker
         enabled: true
-    
+
     - name: Verify Docker service is running
       ansible.builtin.command: systemctl is-active docker
       register: docker_status
@@ -114,13 +114,13 @@
       retries: 10
       delay: 5
       changed_when: false
-    
+
     - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
-    
+
     - name: Ensure Docker service is running and enabled
     #  notify: Cleanup docker
       ansible.builtin.service:
@@ -135,23 +135,92 @@
   block:
     - name: Create Docker network
       community.docker.docker_network:
-        name: balancer_network
+        name: backend_network
         driver: bridge
         state: present
       register: docker_network
 
-    - name: Prepare application directory
+    - name: Prepare grafana config application directory
       ansible.builtin.file:
-        path: /opt/angie
+        path: /opt/compose/grafana/dashboards/keycloak
         state: directory
         mode: '0755'
+        owner: root
+        group: root
+
+    - name: Prepare grafana application config datasources directory
+      ansible.builtin.file:
+        path: /opt/compose/grafana/datasources
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Prepare keycloak application directory
+      ansible.builtin.file:
+        path: /opt/compose/keycloak
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Prepare prometheus application directory
+      ansible.builtin.file:
+        path: /opt/compose/prometheus
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy grafana keycloak dashboards
+      ansible.builtin.copy:
+        src: grafana/dashboards/keycloak/keycloak-general.json
+        dest: /opt/compose/grafana/dashboards/keycloak/keycloak-general.json
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+
+    - name: Copy grafana dashboards
+      ansible.builtin.template:
+        src: grafana/dashboards/dashboards.yml.j2
+        dest: /opt/compose/grafana/dashboards/dashboards.yml
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+
+    - name: Copy keycloak realm
+      ansible.builtin.template:
+        src: keycloak/realm.json.j2
+        dest: /opt/compose/keycloak/realm.json
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+
+    - name: Copy prometheus config
+      ansible.builtin.template:
+        src: prometheus/prometheus.yml.j2
+        dest: /opt/compose/prometheus/prometheus.yml
+        backup: true
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Copy grafana datasources
+      ansible.builtin.template:
+        src: grafana/datasources/datasources.yml.j2
+        dest: /opt/compose/grafana/datasources/datasources.yml
+        backup: true
+        mode: '0640'
         owner: root
         group: root
 
     - name: Copy Docker Compose file
       ansible.builtin.template:
         src: docker_compose_debug.yml.j2
-        dest: /opt/angie/docker-compose.yml
+        dest: /opt/compose/docker-compose.yml
         mode: '0644'
         owner: root
         group: root
@@ -160,7 +229,7 @@
 
     - name: Deploy Docker Compose stack
       community.docker.docker_compose_v2:
-        project_src: /opt/angie
+        project_src: /opt/compose
         files:
           - docker-compose.yml
         state: present

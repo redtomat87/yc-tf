@@ -18,7 +18,7 @@ terraform apply
 ```
 ansible-playbook angie.yml --tags angie-docker
 ```
-Для того чтобы установить из репозиториев Angie-pro, *для установки версии PRO требуется добавить вш файл сертификата и ключа в директорию ./ansible/roles/web_server/files
+Для того чтобы установить из репозиториев Angie-pro, *для установки версии PRO требуется добавить ваш файл сертификата и ключа в директорию ./ansible/roles/web_server/files
 ```
 ansible-playbook angie.yml --tags angie-pro
 ```

@@ -14,7 +14,7 @@ services:
       APP_PORT: 8080
       APP_BGCOLOR: white
     ports:
-      - "9000:8080"
+      - "9001:8080"
   debug-blue:
     image: vscoder/webdebugger
     container_name: debug-blue
@@ -24,7 +24,7 @@ services:
       APP_PORT: 8080
       APP_BGCOLOR: skyblue
     ports:
-      - "9001:8080"
+      - "9003:8080"
   debug-green:
     image: vscoder/webdebugger
     container_name: debug-green
@@ -44,7 +44,7 @@ services:
       APP_PORT: 8080
       APP_BGCOLOR: gold
     ports:
-      - "9003:8080"
+      - "9004:8080"
 
   postgres:
     image: postgres:{{ postgresql.POSTGRES_VERSION }}
@@ -63,7 +63,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:{{ keycloak.KC_VERSION }}
-    command: ["start-dev", "--import-realm"]
+    command: ["start", "--import-realm"]
     restart: unless-stopped
     environment:
       KC_DB: {{ keycloak.KC_DB }}
@@ -102,8 +102,8 @@ services:
       - '--storage.tsdb.retention.time=14d'
       - '--storage.tsdb.wal-compression'
       - '--web.enable-lifecycle'
-      - '--web.external-url={{ keycloak.PROMETHEUS_EXTERNAL_URL }}'
-      - '--web.route-prefix={{ keycloak.PROMETHEUS_ROUTE_PREFIX }}'
+      - '--web.external-url={{ prometheus.PROMETHEUS_EXTERNAL_URL }}'
+      - '--web.route-prefix={{ prometheus.PROMETHEUS_ROUTE_PREFIX }}'
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
@@ -122,7 +122,7 @@ services:
       test: ["CMD", "wget", "--spider", "http://localhost:{{ grafana.GF_SERVER_HTTP_PORT }}:/api/health"]
     environment:
       GF_SERVER_HTTP_PORT: {{ grafana.GF_SERVER_HTTP_PORT }}
-      GF_SERVER_ROOT_URL: {{ grafana.GF_HOSTNAME }}:{{ grafana.GF_SERVER_HTTP_PORT }}
+      GF_SERVER_ROOT_URL: https://{{ grafana.GF_HOSTNAME }}
       GF_LOG_LEVEL: {{ grafana.GF_LOG_LEVEL }}
       GF_AUTH_BASIC_ENABLED: {{ grafana.GF_AUTH_BASIC_ENABLED }}
       GF_AUTH_DISABLE_LOGIN_FORM: {{ grafana.GF_AUTH_DISABLE_LOGIN_FORM }}

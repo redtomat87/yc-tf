@@ -140,116 +140,34 @@
         state: present
       register: docker_network
 
-    - name: Prepare grafana config application directory
+    - name: Create directories
       ansible.builtin.file:
-        path: /opt/compose/grafana/dashboards/keycloak
+        path: "{{ item }}"
         state: directory
         mode: '0755'
         owner: root
         group: root
+      with_items: "{{ directories }}"
 
-    - name: Prepare grafana config application directory
-      ansible.builtin.file:
-        path: /opt/compose/grafana/dashboards/node_exporter
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-
-    - name: Prepare grafana config application directory
-      ansible.builtin.file:
-        path: /opt/compose/grafana/dashboards/angie
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-
-    - name: Prepare grafana application config datasources directory
-      ansible.builtin.file:
-        path: /opt/compose/grafana/datasources
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-
-    - name: Prepare keycloak application directory
-      ansible.builtin.file:
-        path: /opt/compose/keycloak
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-
-    - name: Prepare prometheus application directory
-      ansible.builtin.file:
-        path: /opt/compose/prometheus
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-
-    - name: Copy grafana keycloak dashboards
+    - name: Copy files
       ansible.builtin.copy:
-        src: grafana/dashboards/keycloak/keycloak-general.json
-        dest: /opt/compose/grafana/dashboards/keycloak/keycloak-general.json
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
         backup: true
         mode: '0640'
         owner: root
         group: root
+      with_items: "{{ files_to_copy }}"
 
-    - name: Copy grafana node exporter dashboards
-      ansible.builtin.copy:
-        src: grafana/dashboards/node_exporter/1860_rev37.json
-        dest: /opt/compose/grafana/dashboards/node_exporter/node_exporter.json
-        backup: true
-        mode: '0640'
-        owner: root
-        group: root
-
-    - name: Copy grafana angie dashboards
-      ansible.builtin.copy:
-        src: grafana/dashboards/angie/20719_rev1.json
-        dest: /opt/compose/grafana/dashboards/angie/angie.json
-        backup: true
-        mode: '0640'
-        owner: root
-        group: root
-
-    - name: Copy grafana dashboards
+    - name: Render templates
       ansible.builtin.template:
-        src: grafana/dashboards/dashboards.yml.j2
-        dest: /opt/compose/grafana/dashboards/dashboards.yml
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
         backup: true
         mode: '0640'
         owner: root
         group: root
-
-    - name: Copy keycloak realm
-      ansible.builtin.template:
-        src: keycloak/realm.json.j2
-        dest: /opt/compose/keycloak/realm.json
-        backup: true
-        mode: '0640'
-        owner: root
-        group: root
-
-    - name: Copy prometheus config
-      ansible.builtin.template:
-        src: prometheus/prometheus.yml.j2
-        dest: /opt/compose/prometheus/prometheus.yml
-        backup: true
-        mode: '0644'
-        owner: root
-        group: root
-
-    - name: Copy grafana datasources
-      ansible.builtin.template:
-        src: grafana/datasources/datasources.yml.j2
-        dest: /opt/compose/grafana/datasources/datasources.yml
-        backup: true
-        mode: '0640'
-        owner: root
-        group: root
+      with_items: "{{ templates_to_render }}"
 
     - name: Copy Docker Compose file
       ansible.builtin.template:

@@ -1,11 +1,13 @@
 ## grafana & prometheus
 server {
     ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen {{ ansible_default_ipv4.address }}:443 ssl;
+    listen                         {{ ansible_default_ipv4.address }}:443 ssl;
     ## Включаем quic (udp) для HTTP3
-    listen {{ ansible_default_ipv4.address }}:443 quic;
+    listen                         {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ grafana.GF_HOSTNAME }};
+    server_name                    {{ grafana.GF_HOSTNAME }};
+
+    status_zone                    {{ grafana.GF_HOSTNAME }};
 
     access_log /var/log/angie/{{ grafana.GF_HOSTNAME }}.access.log;
     error_log /var/log/angie/{{ grafana.GF_HOSTNAME }}.error.log;
@@ -60,13 +62,11 @@ server {
 
     }
 
-    location /prometheus {
+    location = /prometheus {
         # Включаем ограничения доступа либо из локальной сети либо по auth_basic
         satisfy any;
-        allow 192.168.1.0/24;
-        # закрываем доступ без пароля из остальных сетей
+        allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
         deny all;
-        # Включаем Auth Basic
         auth_basic "Identify yourself!";
         auth_basic_user_file "{{ angie.base_auth }}";        
         # Активируем ограничение по частоте запросов
@@ -97,6 +97,7 @@ upstream grafana-backend {
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
+    zone grafana-backend 10m;
 }
 
 upstream prometheus-backend {
@@ -104,19 +105,23 @@ upstream prometheus-backend {
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
+    zone prometheus-backend 10m;
 }
 
 
 ## Keycloak
 server {
     ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen {{ ansible_default_ipv4.address }}:443 ssl;
+    listen                        {{ ansible_default_ipv4.address }}:443 ssl;
     ## Включаем quic (udp) для HTTP3
-    listen {{ ansible_default_ipv4.address }}:443 quic;
+    listen                        {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ sites.tests_backend.url }};
-    access_log /var/log/angie/{{ sites.tests_backend.url }}.access.log;
-    error_log /var/log/angie/{{ sites.tests_backend.url }}.error.log;
+    server_name                   {{ keycloak.KC_HOSTNAME }};
+
+    status_zone                   {{ keycloak.KC_HOSTNAME }};
+
+    access_log /var/log/angie/{{ keycloak.KC_HOSTNAME }}.access.log;
+    error_log /var/log/angie/{{ keycloak.KC_HOSTNAME }}.error.log;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
@@ -197,6 +202,7 @@ upstream keycloak-backend {
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
+    zone keycloak-backend 10m;
 }
 
 upstream keycloak-backend-metrics {
@@ -209,7 +215,9 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ sites.tests_backend.url }};
+    server_name                   {{ sites.tests_backend.url }};
+
+    status_zone                   {{ sites.tests_backend.url }};
 
     access_log /var/log/angie/{{ sites.tests_backend.url }}.access.log;
     error_log /var/log/angie/{{ sites.tests_backend.url }}.error.log;
@@ -272,13 +280,14 @@ server {
 }
 
 upstream test-backend {
-    server {{ ansible_default_ipv4.address }}:9000;
+    server {{ ansible_default_ipv4.address }}:9004;
     server {{ ansible_default_ipv4.address }}:9001;
     server {{ ansible_default_ipv4.address }}:9002;
     server {{ ansible_default_ipv4.address }}:9003;
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
+    zone test-backen-client-sessions 10m;
 }
 
 #upstream test-backend {

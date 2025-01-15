@@ -1,14 +1,16 @@
 server {
 
     ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen {{ ansible_default_ipv4.address }}:443 ssl;
+    listen {{ ansible_default_ipv4.address }}:443 ssl reuseport;
     ## Включаем quic (udp) для HTTP3
-    listen {{ ansible_default_ipv4.address }}:443 quic;
+    listen {{ ansible_default_ipv4.address }}:443 quic reuseport;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
 
     server_name {{ sites.angie.url }};
+
+    status_zone {{ sites.angie.url }};
 
     access_log /var/log/angie/{{ sites.angie.url }}.access.log;
     error_log /var/log/angie/{{ sites.angie.url }}.error.log;
@@ -46,7 +48,14 @@ server {
         location /console/api/ {
         	api /status/;
 	    }
-}
+
+    }
+
+    location =/p8s {
+
+        prometheus all;
+
+    }   
 
 
     {# location /metrics/ {

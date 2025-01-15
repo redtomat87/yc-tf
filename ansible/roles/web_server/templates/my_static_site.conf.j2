@@ -8,6 +8,8 @@ server {
     add_header Strict-Transport-Security "max-age=63072000" always;
 
     server_name                    {{ sites.static.url }};
+    access_log /var/log/angie/{{ sites.static.url }}.access.log;
+    error_log /var/log/angie/{{ sites.static.url }}.error.log;
 
     charset utf-8;
 

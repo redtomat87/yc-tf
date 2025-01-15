@@ -54,6 +54,7 @@
         mode: preserve
         owner: "{{ default_config.stat.pw_name }}"
         group: "{{ default_config.stat.gr_name }}"
+      when: default_config.stat.exists
 
     - name: Remove default Angie configuration
       ansible.builtin.file:
@@ -95,8 +96,8 @@
     src: static_site-252831-96c1e2.zip
     dest: /tmp/static_site-252831-96c1e2.zip
     mode: preserve
-    owner: "{{ default_config.stat.pw_name }}"
-    group: "{{ default_config.stat.gr_name }}"
+    owner: www-data
+    group: www-data
   tags:
     - 'angie'
 
@@ -117,6 +118,7 @@
 
 - name: Maintain Angie configurations with validation and rollback
   notify: Restart angie
+  tags: 'angie'
   block:
     - name: Copy main Angie configuration template and backup existing config
       ansible.builtin.template:
@@ -127,6 +129,16 @@
         owner: root
         group: root
       register: updated_main
+
+    - name: Copy metrics Angie configuration template and backup existing config
+      ansible.builtin.template:
+        src: angie-metrics.conf.j2
+        dest: "{{ sites.angie.site_agnie_metrics_config_path }}"
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_metrics
 
     - name: Copy static site configuration template and backup existing config
       ansible.builtin.template:
@@ -152,6 +164,13 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
+    - name: Restore previous metrics Angie configuration
+      ansible.builtin.copy:
+        remote_src: true
+        dest: "{{ sites.angie.site_agnie_metrics_config_path }}"
+        src: "{{ updated_metrics['backup_file'] }}"
+      when: updated_metrics is changed
+
     - name: Restore previous static site configuration
       ansible.builtin.copy:
         remote_src: true
@@ -165,6 +184,12 @@
         path: "{{ updated_main.backup_file if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
       when: updated_main is changed and 'backup_file' in updated_main
+
+    - name: Clean up metrics config backup file
+      ansible.builtin.file:
+        path: "{{ updated_metrics.backup_file if updated_metrics is changed and 'backup_file' in updated_metrics else None }}"
+        state: absent
+      when: updated_metrics is changed and 'backup_file' in updated_metrics
 
     - name: Clean up static site config backup file
       ansible.builtin.file:

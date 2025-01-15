@@ -7,6 +7,9 @@ server {
 
     server_name {{ grafana.GF_HOSTNAME }};
 
+    access_log /var/log/angie/{{ grafana.GF_HOSTNAME }}.access.log;
+    error_log /var/log/angie/{{ grafana.GF_HOSTNAME }}.error.log;
+
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
 
@@ -111,7 +114,9 @@ server {
     ## Включаем quic (udp) для HTTP3
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ keycloak.KC_HOSTNAME }};
+    server_name {{ sites.tests_backend.url }};
+    access_log /var/log/angie/{{ sites.tests_backend.url }}.access.log;
+    error_log /var/log/angie/{{ sites.tests_backend.url }}.error.log;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;
@@ -205,6 +210,9 @@ server {
     listen {{ ansible_default_ipv4.address }}:443 quic;
 
     server_name {{ sites.tests_backend.url }};
+
+    access_log /var/log/angie/{{ sites.tests_backend.url }}.access.log;
+    error_log /var/log/angie/{{ sites.tests_backend.url }}.error.log;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;

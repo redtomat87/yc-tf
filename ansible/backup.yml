@@ -1,7 +1,7 @@
 - name: Angie certs backup
   hosts: all
   roles:
-    - role: angie_certs_backeup
+    - role: angie_certs_backup
       vars:
         installation_type: certs_backup
   tags:

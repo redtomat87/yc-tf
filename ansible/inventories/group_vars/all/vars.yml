@@ -9,13 +9,16 @@ angie:
 sites:
   wordpress:
     site_agnie_config_path: /etc/angie/http.d/wordpress.conf
-    url: "angie.redtomat.ru"
+    url: "daily.redtomat.ru"
   tests_backend:
     site_agnie_config_path: /etc/angie/http.d/backend.conf
     url: "angie-backend.redtomat.ru"
   static:
     site_agnie_config_path: /etc/angie/http.d/static.conf
     url: "static.redtomat.ru"
+  angie:
+    site_agnie_metrics_config_path: /etc/angie/http.d/angie-metrics.conf
+    url: "angie.redtomat.ru"
 
 acme:
   dirs:

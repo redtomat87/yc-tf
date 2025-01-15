@@ -60,3 +60,12 @@ resource "yandex_dns_recordset" "vm-dns-grafana" {
   ttl     = 300
   data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
 }
+
+resource "yandex_dns_recordset" "vm-dns-daily" {
+  count   = length(var.vm)
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  name    = "daily.${var.dns_zone}"
+  type    = "A"
+  ttl     = 300
+  data    = [yandex_compute_instance.vm[count.index].network_interface.0.nat_ip_address]
+}

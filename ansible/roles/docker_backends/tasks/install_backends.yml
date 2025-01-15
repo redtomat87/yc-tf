@@ -205,16 +205,6 @@
         group: root
       register: updated_main
 
-    # - name: Copy auth configuration template and backup existing config
-    #   ansible.builtin.template:
-    #     src: .htpasswd.j2
-    #     dest: "{{ angie.base_auth }}"
-    #     backup: true
-    #     mode: '0600'
-    #     owner: www-data
-    #     group: www-data
-    #   register: updated_auth_file
-
     - name: Validate Angie configuration
       ansible.builtin.command: angie -t
       when: updated_main is changed or updated_auth_file is changed
@@ -229,13 +219,6 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
-    # - name: Restore previous auth configuration template 
-    #   ansible.builtin.copy:
-    #     remote_src: true
-    #     dest: "{{ angie.base_auth }}"
-    #     src: "{{ updated_auth_file['backup_file'] }}"
-    #   when: updated_auth_file is changed
-
   always:
     - name: Clean up main config backup file
       ansible.builtin.file:
@@ -243,8 +226,3 @@
         state: absent
       when: updated_main is changed and validation is success
 
-    # - name: Clean up auth configuration template 
-    #   ansible.builtin.file:
-    #     path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
-    #     state: absent
-    #   when: updated_auth_file is changed and validation is success

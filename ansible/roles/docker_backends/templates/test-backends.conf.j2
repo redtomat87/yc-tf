@@ -64,11 +64,11 @@ server {
 
     location = /prometheus {
         # Включаем ограничения доступа либо из локальной сети либо по auth_basic
-        satisfy any;
-        allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
-        deny all;
-        auth_basic "Identify yourself!";
-        auth_basic_user_file "{{ angie.base_auth }}";        
+        #satisfy any;
+        #allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
+        #deny all;
+        #auth_basic "Identify yourself!";
+        #auth_basic_user_file "{{ angie.base_auth }}";        
         # Активируем ограничение по частоте запросов
         limit_req zone=lone burst=50;
         limit_req_log_level error;

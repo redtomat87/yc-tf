@@ -62,13 +62,13 @@ server {
 
     }
 
-    location = /prometheus {
+    location /prometheus {
         # Включаем ограничения доступа либо из локальной сети либо по auth_basic
-        #satisfy any;
-        #allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
-        #deny all;
-        #auth_basic "Identify yourself!";
-        #auth_basic_user_file "{{ angie.base_auth }}";        
+        satisfy any;
+        allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
+        deny all;
+        auth_basic "Identify yourself!";
+        auth_basic_user_file "{{ angie.base_auth }}";        
         # Активируем ограничение по частоте запросов
         limit_req zone=lone burst=50;
         limit_req_log_level error;
@@ -199,6 +199,7 @@ server {
 
 upstream keycloak-backend {
     server {{ ansible_default_ipv4.address }}:{{ keycloak.KC_PORT }};
+    server {{ ansible_default_ipv4.address }}:8083;
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
@@ -207,6 +208,7 @@ upstream keycloak-backend {
 
 upstream keycloak-backend-metrics {
     server {{ ansible_default_ipv4.address }}:{{ keycloak.KC_MANAGEMENT_PORT }};
+    server {{ ansible_default_ipv4.address }}:9005;
 }
 
 server {

@@ -15,6 +15,9 @@ services:
       APP_BGCOLOR: white
     ports:
       - "9001:8080"
+    networks:
+      - backend_network
+
   debug-blue:
     image: vscoder/webdebugger
     container_name: debug-blue
@@ -25,6 +28,9 @@ services:
       APP_BGCOLOR: skyblue
     ports:
       - "9003:8080"
+    networks:
+      - backend_network
+
   debug-green:
     image: vscoder/webdebugger
     container_name: debug-green
@@ -34,7 +40,10 @@ services:
       APP_PORT: 8080
       APP_BGCOLOR: limegreen
     ports:
-      - "9002:8080"      
+      - "9002:8080"
+    networks:
+      - backend_network
+
   debug-gold:
     image: vscoder/webdebugger
     container_name: debug-gold
@@ -45,6 +54,8 @@ services:
       APP_BGCOLOR: gold
     ports:
       - "9004:8080"
+    networks:
+      - backend_network
 
   postgres:
     image: postgres:{{ postgresql.POSTGRES_VERSION }}
@@ -60,6 +71,8 @@ services:
     ports:
       - "5432:5432"
     logging: *logging
+    networks:
+      - backend_network
 
   keycloak:
     image: quay.io/keycloak/keycloak:{{ keycloak.KC_VERSION }}
@@ -90,9 +103,52 @@ services:
     ports:
       - {{ keycloak.KC_PORT }}:8080
       - {{ keycloak.KC_MANAGEMENT_PORT }}:9000
+    #  - 7800:7800
+    #  - 7900:7900
+    #  - 57800:57800
     volumes:
       - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
     logging: *logging
+    networks:
+      - backend_network
+
+  keycloak-second:
+    image: quay.io/keycloak/keycloak:{{ keycloak.KC_VERSION }}
+    command: ["start", "--import-realm"]
+    restart: unless-stopped
+    environment:
+      KC_DB: {{ keycloak.KC_DB }}
+      KC_DB_USERNAME: {{ postgresql.POSTGRES_USER }}
+      KC_DB_PASSWORD: {{ postgresql.POSTGRES_PASSWORD }}
+      KC_DB_URL: "jdbc:postgresql://postgres:5432/{{ postgresql.POSTGRES_DB }}"  # Используем имя сервиса postgres
+      KC_METRICS_ENABLED: true
+      KC_LOG_LEVEL: {{ keycloak.KC_LOG_LEVEL }}
+      KC_REALM_NAME: {{ keycloak.KC_LOG_LEVEL }}
+      KC_BOOTSTRAP_ADMIN_USERNAME: {{ keycloak.KEYCLOAK_ADMIN_USERNAME }}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: {{ keycloak.KEYCLOAK_ADMIN_PASSWORD }}
+      GF_URL: "{{ grafana.GF_HOSTNAME }}:{{ grafana.GF_SERVER_HTTP_PORT }}"
+      GF_ADMIN_USERNAME: {{ grafana.GF_ADMIN_USERNAME }}
+      GF_ADMIN_PASSWORD: {{ grafana.GF_ADMIN_PASSWORD }}
+      KC_HOSTNAME: {{ keycloak.KC_HOSTNAME }}
+      KC_HTTP_ENABLED: {{ keycloak.KC_HTTP_ENABLED }}
+      KC_PROXY_HEADERS: {{ keycloak.KC_PROXY_HEADERS }}
+      KC_FEATURES: {{ keycloak.KC_FEATURES }}
+      KC_HEALTH_ENABLED: {{ keycloak.KC_HEALTH_ENABLED }}
+      KC_PORT: {{ keycloak.KC_PORT }}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 8083:8080
+      - 9005:9000
+#      - 7800:7800
+#      - 7900:7900
+#      - 57800:57800
+    volumes:
+      - ./keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+    logging: *logging
+    networks:
+      - backend_network
 
   prometheus:
     image: prom/prometheus:{{ prometheus.PROMETHEUS_VERSION }}
@@ -112,6 +168,8 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     logging: *logging
+    networks:
+      - backend_network
 
   grafana:
     image: grafana/grafana-oss:{{ grafana.GF_VERSION }}
@@ -143,6 +201,13 @@ services:
       postgres:
         condition: service_healthy
     logging: *logging
+    networks:
+      - backend_network
 
 volumes:
   {{ postgresql.volume_name }}:
+
+networks:
+  backend_network:
+    name: backend_network
+    external: true

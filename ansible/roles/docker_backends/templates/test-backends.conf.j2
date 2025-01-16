@@ -198,12 +198,15 @@ server {
 }
 
 upstream keycloak-backend {
+    least_conn;
     server {{ ansible_default_ipv4.address }}:{{ keycloak.KC_PORT }};
     server {{ ansible_default_ipv4.address }}:8083;
     keepalive 16;
     keepalive_requests 1000;
     keepalive_timeout 60s;
-    zone keycloak-backend 10m;
+    sticky cookie srv_id  max-age=3600;
+    sticky_secret my_angie.$remote_addr;
+    zone keycloak-backend 1m;
 }
 
 upstream keycloak-backend-metrics {

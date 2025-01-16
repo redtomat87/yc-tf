@@ -74,10 +74,11 @@
       ansible.builtin.systemd:
         name: docker
         state: started
+        daemon_reload: true
       register: docker_status
       until: docker_status.status.ActiveState == 'active'
-      retries: 6
-      delay: 5
+      retries: 10
+      delay: 15
       changed_when: false
 
     - name: Debug docker_status
@@ -99,17 +100,20 @@
         timeout: 120
 
   rescue:
-    - name: Restart Docker service
-      ansible.builtin.service:
+    - name: Stop docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: stopped
+
+    - name: Start and verify Docker service
+      ansible.builtin.systemd:
         name: docker
         state: restarted
-
-    - name: Wait after restart
-      ansible.builtin.wait_for:
-        path: /var/run/docker.sock
-        state: present
-        delay: 10
-        timeout: 120
+      register: docker_status
+      until: docker_status.status.ActiveState == 'active'
+      retries: 10
+      delay: 15
+      changed_when: false
 
   always:
     - name: Verify Docker service is running
@@ -122,11 +126,6 @@
       delay: 5
       changed_when: false
 
-    - name: Ensure Docker service is running and enabled
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
 
 - name: Configure Docker network and application
   become: true

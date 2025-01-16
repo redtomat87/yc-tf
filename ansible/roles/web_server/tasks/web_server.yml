@@ -17,6 +17,15 @@
         state: present
         update_cache: true
 
+    - name: Copy template fail2ban jail file
+      ansible.builtin.template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: '0600'
+        backup: true
+
     - name: Add Angie repository key
       ansible.builtin.get_url:
         url: "https://angie.software/keys/angie-signing.gpg"

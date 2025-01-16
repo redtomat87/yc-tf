@@ -8,7 +8,8 @@
       - gnupg
       - python3-pip
       - python3-setuptools
-      - python3-docker 
+      - python3-docker
+      - fail2ban
     state: latest
     update_cache: true
 

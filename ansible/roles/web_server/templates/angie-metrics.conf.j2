@@ -34,9 +34,14 @@ server {
     location /status/ {
         api     /status/;
         api_config_files on;
-   #     allow   {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }};        
-        allow all;
-        deny    all;
+
+        # Доступ или по паролю или из локальной сети
+        satisfy any;
+        allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
+        deny all;
+        auth_basic "Identify yourself!";
+        auth_basic_user_file "{{ angie.base_auth }}";
+
     }
 
     location /console/ {

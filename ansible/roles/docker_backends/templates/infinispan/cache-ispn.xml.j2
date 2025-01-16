@@ -1,0 +1,132 @@
+<infinispan
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="urn:infinispan:config:15.0 http://www.infinispan.org/schemas/infinispan-config-15.0.xsd"
+        xmlns="urn:infinispan:config:15.0">
+
+        <jgroups>
+            <stack name="jdbc2-ping-tcp" extends="tcp">
+                <JDBC_PING2
+                    connection_driver="org.postgresql.Driver"
+                    connection_username="{{ postgresql.POSTGRES_USER }}"
+                    connection_password="{{ postgresql.POSTGRES_PASSWORD }}"
+                    connection_url="jdbc:postgresql://{{ ansible_default_ipv4.address }}:5432/{{ postgresql.POSTGRES_DB }}"
+                    initialize_sql="CREATE TABLE IF NOT EXISTS jgroups (address varchar(200) NOT NULL, name varchar(200), cluster varchar(200) NOT NULL, ip varchar(200) NOT NULL, coord boolean, PRIMARY KEY (address))"
+                    insert_single_sql="INSERT INTO jgroups (address, name, cluster, ip, coord) values (?, ?, ?, ?, ?)"
+                    delete_single_sql="DELETE FROM jgroups WHERE address=?"
+                    select_all_pingdata_sql="SELECT address, name, ip, coord FROM jgroups WHERE cluster=?"
+                    clear_sql="DELETE FROM jgroups WHERE cluster=?"
+                    info_writer_sleep_time="500"
+                    register_shutdown_hook="true"
+                    remove_all_data_on_view_change="true"
+                    return_entire_cache="false"
+                    stack.combine="REPLACE"
+                    stack.position="MPING"/>
+                <MERGE3 max_interval="30000" min_interval="10000"/>
+                <FD_SOCK/>
+                <FD_ALL3 timeout="10000" interval="2000"/>
+                <VERIFY_SUSPECT2 num_msgs="2" timeout="1000"/>
+                <pbcast.NAKACK2 xmit_interval="200"
+                                xmit_table_num_rows="50"
+                                xmit_table_msgs_per_row="1024"
+                                xmit_table_max_compaction_time="30000"
+                                use_mcast_xmit="false"
+                                resend_last_seqno="true"/>
+                <UNICAST3 conn_close_timeout="5000"
+                          xmit_interval="200"
+                          xmit_table_num_rows="50"
+                          xmit_table_msgs_per_row="1024"
+                          xmit_table_max_compaction_time="30000"/>
+                <pbcast.STABLE desired_avg_gossip="5000"
+                               max_bytes="1M"/>
+                <pbcast.GMS print_local_addr="true" 
+                            join_timeout="4000"/>
+                <UFC min_threshold="0.40"
+                     max_credits="4m"/>
+                <MFC max_credits="4m"
+                     min_threshold="0.4"/>
+                <FRAG3/>
+            </stack>
+        </jgroups>
+
+      <cache-container name="keycloak" statistics="true">
+                <global-state unclean-shutdown-action="PURGE"/>
+                <global-state/>
+                <transport stack="jdbc2-ping-tcp" lock-timeout="60000"/>
+
+                <local-cache name="realms" simple-cache="true">
+                    <encoding>
+                        <key media-type="application/x-java-object"/>
+                        <value media-type="application/x-java-object"/>
+                    </encoding>
+                    <memory max-count="10000"/>
+                </local-cache>
+                <local-cache name="users" simple-cache="true">
+                    <encoding>
+                        <key media-type="application/x-java-object"/>
+                        <value media-type="application/x-java-object"/>
+                    </encoding>
+                    <memory max-count="10000"/>
+                </local-cache>
+                <distributed-cache name="sessions" owners="1">
+                    <expiration lifespan="-1"/>
+                    <memory max-count="10000"/>
+                </distributed-cache>
+                <distributed-cache name="authenticationSessions" owners="2">
+                    <expiration lifespan="-1"/>
+                </distributed-cache>
+                <distributed-cache name="offlineSessions" owners="1">
+                    <expiration lifespan="-1"/>
+                    <memory max-count="10000"/>
+                </distributed-cache>
+                <distributed-cache name="clientSessions" owners="1">
+                    <expiration lifespan="-1"/>
+                    <memory max-count="10000"/>
+                </distributed-cache>
+                <distributed-cache name="offlineClientSessions" owners="1">
+                    <expiration lifespan="-1"/>
+                    <memory max-count="10000"/>
+                </distributed-cache>
+                <distributed-cache name="loginFailures" owners="2">
+                    <expiration lifespan="-1"/>
+                </distributed-cache>
+                <local-cache name="authorization" simple-cache="true">
+                    <encoding>
+                        <key media-type="application/x-java-object"/>
+                        <value media-type="application/x-java-object"/>
+                    </encoding>
+                    <memory max-count="10000"/>
+                </local-cache>
+                <replicated-cache name="work">
+                    <expiration lifespan="-1"/>
+                </replicated-cache>
+                <local-cache name="keys" simple-cache="true">
+                    <encoding>
+                        <key media-type="application/x-java-object"/>
+                        <value media-type="application/x-java-object"/>
+                    </encoding>
+                    <expiration max-idle="3600000"/>
+                    <memory max-count="1000"/>
+                </local-cache>
+                <distributed-cache name="actionTokens" owners="2">
+                    <encoding>
+                        <key media-type="application/x-java-object"/>
+                        <value media-type="application/x-java-object"/>
+                    </encoding>
+                    <expiration max-idle="-1" lifespan="-1" interval="300000"/>
+                    <memory max-count="-1"/>
+                </distributed-cache>
+
+            </cache-container>
+
+          <!-- <endpoints>
+            <endpoint socket-binding="default"
+                    security-realm="default">
+            <hotrod-connector external-host="infinispan" external-port="11222"/>
+            <rest-connector>
+                <authentication mechanisms="BASIC"/>
+            </rest-connector>
+            </endpoint>
+            <endpoints socket-binding="metrics" security-realm="metrics"/>
+          </endpoints> -->
+      </server>
+    </infinispan>

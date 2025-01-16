@@ -9,13 +9,16 @@ angie:
 sites:
   wordpress:
     site_agnie_config_path: /etc/angie/http.d/wordpress.conf
-    url: "angie.redtomat.ru"
+    url: "daily.redtomat.ru"
   tests_backend:
     site_agnie_config_path: /etc/angie/http.d/backend.conf
     url: "angie-backend.redtomat.ru"
   static:
     site_agnie_config_path: /etc/angie/http.d/static.conf
     url: "static.redtomat.ru"
+  angie:
+    site_agnie_metrics_config_path: /etc/angie/http.d/angie-metrics.conf
+    url: "angie.redtomat.ru"
 
 acme:
   dirs:
@@ -24,3 +27,31 @@ acme:
 
 local_backup:
   dir: "{{ playbook_dir }}/files/cert_backup"
+  
+directories:
+  - /opt/compose/grafana/dashboards/keycloak
+  - /opt/compose/grafana/dashboards/node_exporter
+  - /opt/compose/grafana/dashboards/angie
+  - /opt/compose/grafana/datasources
+  - /opt/compose/keycloak
+  - /opt/compose/prometheus
+
+files_to_copy:
+  - src: grafana/dashboards/keycloak/keycloak-general.json
+    dest: /opt/compose/grafana/dashboards/keycloak/keycloak-general.json
+  - src: grafana/dashboards/node_exporter/1860_rev37.json
+    dest: /opt/compose/grafana/dashboards/node_exporter/node_exporter.json
+  - src: grafana/dashboards/angie/20719_rev1.json
+    dest: /opt/compose/grafana/dashboards/angie/angie.json
+
+templates_to_render:
+  - src: grafana/dashboards/dashboards.yml.j2
+    dest: /opt/compose/grafana/dashboards/dashboards.yml
+  - src: keycloak/realm.json.j2
+    dest: /opt/compose/keycloak/realm.json
+  - src: prometheus/prometheus.yml.j2
+    dest: /opt/compose/prometheus/prometheus.yml
+  - src: grafana/datasources/datasources.yml.j2
+    dest: /opt/compose/grafana/datasources/datasources.yml
+  - src: infinispan/cache-ispn.xml.j2
+    dest: /opt/compose/keycloak/cache-ispn.xml

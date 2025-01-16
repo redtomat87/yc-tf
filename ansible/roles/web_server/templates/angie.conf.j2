@@ -26,6 +26,8 @@ events {
 
 
 http {
+    # Включаем конфиг для отдачи метрик в prometheus
+    include prometheus_all.conf;
     include       /etc/angie/mime.types;
     default_type  application/octet-stream;
 

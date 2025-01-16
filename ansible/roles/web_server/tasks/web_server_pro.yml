@@ -32,6 +32,7 @@
       - gnupg2
       - unzip
       - fail2ban
+      - prometheus-node-exporter
     state: present
   tags:
     - 'angie-pro'
@@ -184,6 +185,16 @@
         group: root
       register: updated_main
 
+    - name: Copy metrics Angie metrics template and backup existing config
+      ansible.builtin.template:
+        src: angie-metrics.conf.j2
+        dest: "{{ sites.angie.site_agnie_metrics_config_path }}"
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_metrics
+
     - name: Copy static site configuration template and backup existing config
       ansible.builtin.template:
         src: my_static_site.conf.j2
@@ -193,6 +204,16 @@
         owner: root
         group: root
       register: updated_static_site
+
+    - name: Copy auth configuration template and backup existing config
+      ansible.builtin.template:
+        src: .htpasswd.j2
+        dest: "{{ angie.base_auth }}"
+        backup: true
+        mode: '0600'
+        owner: www-data
+        group: www-data
+      register: updated_auth_file
 
     - name: Validate Angie configuration
       ansible.builtin.command: angie -t
@@ -208,12 +229,26 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
+    - name: Restore previous metrics Angie configuration
+      ansible.builtin.copy:
+        remote_src: true
+        dest: "{{ sites.angie.site_agnie_metrics_config_path }}"
+        src: "{{ updated_metrics['backup_file'] }}"
+      when: updated_metrics is changed
+
     - name: Restore previous static site configuration
       ansible.builtin.copy:
         remote_src: true
         dest: "{{ sites.static.site_agnie_config_path }}"
         src: "{{ updated_static_site['backup_file'] }}"
       when: updated_static_site is changed
+
+    - name: Restore previous auth configuration template 
+      ansible.builtin.copy:
+        remote_src: true
+        dest: "{{ angie.base_auth }}"
+        src: "{{ updated_auth_file['backup_file'] }}"
+      when: updated_auth_file is changed
 
   always:
     - name: Clean up main config backup file
@@ -222,8 +257,20 @@
         state: absent
       when: updated_main is changed and 'backup_file' in updated_main
 
+    - name: Clean up metrics config backup file
+      ansible.builtin.file:
+        path: "{{ updated_metrics.backup_file if updated_metrics is changed and 'backup_file' in updated_metrics else None }}"
+        state: absent
+      when: updated_metrics is changed and 'backup_file' in updated_metrics
+
     - name: Clean up static site config backup file
       ansible.builtin.file:
         path: "{{ updated_static_site.backup_file if updated_static_site is changed and 'backup_file' in updated_static_site else None }}"
         state: absent
       when: updated_static_site is changed and 'backup_file' in updated_static_site
+
+    - name: Clean up auth configuration template 
+      ansible.builtin.file:
+        path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
+        state: absent
+      when: updated_auth_file is changed and validation is success

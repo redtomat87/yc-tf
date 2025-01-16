@@ -1,2 +1,3 @@
 collections:
   - community.mysql
+  - community.docker.docker

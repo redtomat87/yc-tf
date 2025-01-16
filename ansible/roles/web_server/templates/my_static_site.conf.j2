@@ -9,6 +9,11 @@ server {
 
     server_name                    {{ sites.static.url }};
 
+    status_zone                    {{ sites.static.url }};
+
+    access_log /var/log/angie/{{ sites.static.url }}.access.log;
+    error_log /var/log/angie/{{ sites.static.url }}.error.log;
+
     charset utf-8;
 
     ## Заказываем и прикручиваем сертификаты. Сертификаты находятся в /var/lib/angie/acme/, если не

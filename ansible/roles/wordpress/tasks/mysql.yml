@@ -18,6 +18,7 @@
     login_unix_socket: /var/run/mysqld/mysqld.sock
     query: SELECT 1
   register: mysql_socket_auth
+  ignore_errors: true
 
 - name: Set MySQL root password for the first time (socket auth)
   community.mysql.mysql_user:

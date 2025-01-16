@@ -1,19 +1,16 @@
-server {
-    listen {{ ansible_default_ipv4.address }}:80;
-    server_name _;
-    return 301 https://$host$request_uri;
-}
-
 
 server {
     ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
-    listen {{ ansible_default_ipv4.address }}:443 ssl default_server reuseport;
+    listen                         {{ ansible_default_ipv4.address }}:443 ssl default_server;
     ## Включаем quic (udp) для HTTP3
-    listen {{ ansible_default_ipv4.address }}:443 quic reuseport;
+    listen                         {{ ansible_default_ipv4.address }}:443 quic;
 
-    server_name {{ sites.wordpress.url }};
+    server_name                    {{ sites.wordpress.url }};
 
+    status_zone                    {{ sites.wordpress.url }};
 
+    access_log /var/log/angie/{{ sites.wordpress.url }}.access.log;
+    error_log /var/log/angie/{{ sites.wordpress.url }}.error.log;
 
     ## HSTS (заставить браузер использовать HTTPS на долгое время)
     add_header Strict-Transport-Security "max-age=63072000" always;

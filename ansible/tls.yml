@@ -1,8 +1,0 @@
-- name: Install TLS fo redtomat
-  hosts: all
-  roles:
-    - role: tls
-      vars:
-        installation_type: redtomat_tls
-  tags:
-    - redtomat

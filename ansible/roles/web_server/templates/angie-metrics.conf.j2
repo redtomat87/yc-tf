@@ -1,0 +1,84 @@
+server {
+
+    ## Используем reuseport c целью оптимизации утилизации ресурсов и использование quic
+    listen {{ ansible_default_ipv4.address }}:443 ssl reuseport;
+    ## Включаем quic (udp) для HTTP3
+    listen {{ ansible_default_ipv4.address }}:443 quic reuseport;
+
+    ## HSTS (заставить браузер использовать HTTPS на долгое время)
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    server_name {{ sites.angie.url }};
+
+    status_zone {{ sites.angie.url }};
+
+    access_log /var/log/angie/{{ sites.angie.url }}.access.log;
+    error_log /var/log/angie/{{ sites.angie.url }}.error.log;
+
+    charset utf-8;
+
+    ## Заказываем и прикручиваем сертификаты. Сертификаты находятся в /var/lib/angie/acme/, если не
+    ## переопределено директивой acme_client_path
+    acme                 rsa;
+    acme                 ecdsa;
+    ssl_certificate      $acme_cert_rsa;
+    ssl_certificate_key  $acme_cert_key_rsa;
+    ssl_certificate      $acme_cert_ecdsa;
+    ssl_certificate_key  $acme_cert_key_ecdsa;
+
+    ## Включаем HTTP2 и HTTP3
+    http2 on;
+    http3 on;
+    add_header Alt-Svc 'h3=":443"; ma=86400';
+
+    location /status/ {
+        api     /status/;
+        api_config_files on;
+
+        # Доступ или по паролю или из локальной сети
+        satisfy any;
+        allow {{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}; 
+        deny all;
+        auth_basic "Identify yourself!";
+        auth_basic_user_file "{{ angie.base_auth }}";
+
+    }
+
+    location /console/ {
+        allow all;
+	    deny all;
+        alias /usr/share/angie-console-light/html/;
+	    index index.html;
+
+        location /console/api/ {
+        	api /status/;
+	    }
+
+    }
+
+    location =/p8s {
+
+        prometheus all;
+
+    }   
+
+
+    {# location /metrics/ {
+        # Обработка запроса без перенаправления
+        # Здесь также можно добавить дополнительные настройки, если нужно
+    } #}
+
+}
+
+
+
+
+server {
+    listen {{ ansible_default_ipv4.address }}:80 reuseport;
+    server_name _;
+
+    # Перенаправление всех остальных запросов на HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

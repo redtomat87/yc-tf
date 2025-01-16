@@ -1,0 +1,34 @@
+- name: Check and backup ACME directories
+  tags:
+    - backup
+  block:
+    - name: Get remote directories status
+      ansible.builtin.find:
+        paths: /var/lib/angie/acme
+        file_type: directory
+        patterns: "{{ acme.dirs }}"
+      register: remote_dirs_backup
+
+    - name: Create local backup directory if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ local_backup.dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      become: false
+
+    - name: Backup ACME directories to local host
+      ansible.posix.synchronize:
+        src: "{{ item.path }}/"
+        dest: "{{ local_backup.dir }}/{{ item.path | basename }}/"
+        mode: pull
+        recursive: true
+        use_ssh_args: true
+        rsync_opts:
+          - "--chmod=D0755,F0644"
+          - "--rsync-path='sudo rsync'"
+          - "--checksum"
+      loop: "{{ remote_dirs_backup.files }}"
+      when: remote_dirs_backup.matched > 0
+      delegate_to: localhost
+      become: false

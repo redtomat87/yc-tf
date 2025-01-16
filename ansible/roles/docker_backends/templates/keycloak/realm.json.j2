@@ -1,0 +1,49 @@
+{
+  "id": "{{ keycloak.KC_REALM_NAME }}",
+  "realm": "{{ keycloak.KC_REALM_NAME }}",
+  "sslRequired": "none",
+  "enabled": true,
+  "eventsEnabled": true,
+  "eventsExpiration": 900,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "attributes": {
+    "adminEventsExpiration": "900"
+  },
+  "clients": [
+    {
+      "id": "grafana",
+      "clientId": "grafana",
+      "name": "grafana",
+      "enabled": true,
+      "publicClient": true,
+      "rootUrl": "https://{{ grafana.GF_HOSTNAME }}",
+      "adminUrl": "https://{{ grafana.GF_HOSTNAME }}",
+      "baseUrl": "https://{{ grafana.GF_HOSTNAME }}",
+      "redirectUris": [
+        "https://{{ grafana.GF_HOSTNAME }}/*"
+      ],
+      "webOrigins": [
+        "https://{{ grafana.GF_HOSTNAME }}"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "admin",
+      "email": "{{ grafana.GF_ADMIN_EMAIL }}",
+      "username": "{{ grafana.GF_ADMIN_USERNAME }}",
+      "firstName": "DevOps",
+      "lastName": "SRE",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "temporary": false,
+          "type": "password",
+          "value": "{{ grafana.GF_ADMIN_PASSWORD }}"
+        }
+      ]
+    }
+  ]
+}

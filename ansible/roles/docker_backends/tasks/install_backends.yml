@@ -65,6 +65,12 @@
 
 - name: Ensure Docker is running
   block:
+    - name: Restart Docker service
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+      ignore_errors: true
+
     - name: Wait for Docker service to be ready
       ansible.builtin.wait_for:
         path: /var/run/docker.sock
@@ -106,7 +112,7 @@
       ansible.builtin.service:
         name: docker
         enabled: true
-    
+
     - name: Verify Docker service is running
       ansible.builtin.command: systemctl is-active docker
       register: docker_status
@@ -114,13 +120,13 @@
       retries: 10
       delay: 5
       changed_when: false
-    
+
     - name: Ensure Docker service is running and enabled
       ansible.builtin.service:
         name: docker
         state: started
         enabled: true
-    
+
     - name: Ensure Docker service is running and enabled
     #  notify: Cleanup docker
       ansible.builtin.service:
@@ -135,23 +141,44 @@
   block:
     - name: Create Docker network
       community.docker.docker_network:
-        name: balancer_network
+        name: backend_network
         driver: bridge
         state: present
       register: docker_network
 
-    - name: Prepare application directory
+    - name: Create directories
       ansible.builtin.file:
-        path: /opt/angie
+        path: "{{ item }}"
         state: directory
         mode: '0755'
         owner: root
         group: root
+      with_items: "{{ directories }}"
+
+    - name: Copy files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        backup: true
+        mode: '0644'
+        owner: root
+        group: root
+      with_items: "{{ files_to_copy }}"
+
+    - name: Render templates
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+      with_items: "{{ templates_to_render }}"
 
     - name: Copy Docker Compose file
       ansible.builtin.template:
         src: docker_compose_debug.yml.j2
-        dest: /opt/angie/docker-compose.yml
+        dest: /opt/compose/docker-compose.yml
         mode: '0644'
         owner: root
         group: root
@@ -160,7 +187,7 @@
 
     - name: Deploy Docker Compose stack
       community.docker.docker_compose_v2:
-        project_src: /opt/angie
+        project_src: /opt/compose
         files:
           - docker-compose.yml
         state: present
@@ -184,16 +211,6 @@
         group: root
       register: updated_main
 
-    - name: Copy auth configuration template and backup existing config
-      ansible.builtin.template:
-        src: .htpasswd.j2
-        dest: "{{ angie.base_auth }}"
-        backup: true
-        mode: '0600'
-        owner: www-data
-        group: www-data
-      register: updated_auth_file
-
     - name: Validate Angie configuration
       ansible.builtin.command: angie -t
       when: updated_main is changed or updated_auth_file is changed
@@ -208,13 +225,6 @@
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
-    - name: Restore previous auth configuration template 
-      ansible.builtin.copy:
-        remote_src: true
-        dest: "{{ angie.base_auth }}"
-        src: "{{ updated_auth_file['backup_file'] }}"
-      when: updated_auth_file is changed
-
   always:
     - name: Clean up main config backup file
       ansible.builtin.file:
@@ -222,8 +232,3 @@
         state: absent
       when: updated_main is changed and validation is success
 
-    - name: Clean up auth configuration template 
-      ansible.builtin.file:
-        path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
-        state: absent
-      when: updated_auth_file is changed and validation is success

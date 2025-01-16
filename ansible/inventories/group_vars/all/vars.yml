@@ -53,3 +53,5 @@ templates_to_render:
     dest: /opt/compose/prometheus/prometheus.yml
   - src: grafana/datasources/datasources.yml.j2
     dest: /opt/compose/grafana/datasources/datasources.yml
+  - src: infinispan/cache-ispn.xml.j2
+    dest: /opt/compose/keycloak/cache-ispn.xml

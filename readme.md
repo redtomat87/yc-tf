@@ -99,7 +99,7 @@ ansible-playbook backup.yml
 
 
 ## Бэкап TLS сертификатов
-Для выполнения всей действий в рамках одного плейбука
+Для выполнения всех действий в рамках одного плейбука
 ```bash
 ansible-playbook all_playbooks.yml
 ```

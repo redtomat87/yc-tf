@@ -65,6 +65,12 @@
 
 - name: Ensure Docker is running
   block:
+    - name: Restart Docker service
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+      ignore_errors: true
+
     - name: Wait for Docker service to be ready
       ansible.builtin.wait_for:
         path: /var/run/docker.sock
@@ -154,7 +160,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         backup: true
-        mode: '0640'
+        mode: '0644'
         owner: root
         group: root
       with_items: "{{ files_to_copy }}"

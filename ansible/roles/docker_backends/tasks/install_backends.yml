@@ -65,10 +65,30 @@
 
 - name: Ensure Docker is running
   block:
-    - name: Restart Docker service
+    - name: Ensure Docker service is enabled
+      ansible.builtin.service:
+        name: docker
+        enabled: true
+
+    - name: Start and verify Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+      register: docker_status
+      until: docker_status.status.ActiveState == 'active'
+      retries: 6
+      delay: 5
+      changed_when: false
+
+    - name: Debug docker_status
+      ansible.builtin.debug:
+        var: docker_status
+
+    - name: Restart Docker service if not running
       ansible.builtin.service:
         name: docker
         state: restarted
+      when: docker_status.status.ActiveState != 'active'
       ignore_errors: true
 
     - name: Wait for Docker service to be ready
@@ -77,14 +97,6 @@
         state: present
         delay: 10
         timeout: 120
-
-    - name: Verify Docker service is running
-      ansible.builtin.command: systemctl is-active docker
-      register: docker_status
-      until: docker_status.rc == 0
-      retries: 5
-      delay: 5
-      changed_when: false
 
   rescue:
     - name: Restart Docker service
@@ -99,36 +111,18 @@
         delay: 10
         timeout: 120
 
-    - name: Verify Docker service is running after restart
-      ansible.builtin.command: systemctl is-active docker
-      register: docker_status
-      until: docker_status.rc == 0
-      retries: 5
-      delay: 5
-      changed_when: false
-
   always:
-    - name: Ensure Docker service is enabled
-      ansible.builtin.service:
-        name: docker
-        enabled: true
-
     - name: Verify Docker service is running
-      ansible.builtin.command: systemctl is-active docker
+      ansible.builtin.systemd:
+        name: docker
+        state: started
       register: docker_status
-      until: docker_status.rc == 0
+      until: docker_status.status.ActiveState == 'active'
       retries: 10
       delay: 5
       changed_when: false
 
     - name: Ensure Docker service is running and enabled
-      ansible.builtin.service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Ensure Docker service is running and enabled
-    #  notify: Cleanup docker
       ansible.builtin.service:
         name: docker
         state: started
@@ -170,7 +164,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         backup: true
-        mode: '0640'
+        mode: '0644'
         owner: root
         group: root
       with_items: "{{ templates_to_render }}"
@@ -213,7 +207,7 @@
 
     - name: Validate Angie configuration
       ansible.builtin.command: angie -t
-      when: updated_main is changed or updated_auth_file is changed
+      when: updated_main is changed
       register: validation
       failed_when: validation.rc != 0
 
@@ -231,4 +225,3 @@
         path: "{{ updated_main['backup_file'] if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
       when: updated_main is changed and validation is success
-

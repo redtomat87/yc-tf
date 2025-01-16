@@ -3,6 +3,6 @@ apiVersion: 1
 datasources:
   - name: datasource-prometheus
     type: prometheus
-    url: https://{{ grafana.GF_HOSTNAME }}/prometheus
+    url: http://prometheus:9090/prometheus
     access: proxy
     isDefault: true

@@ -1,0 +1,55 @@
+- name: Install Angie Open Source
+  hosts: all
+  roles:
+    - role: web_server
+      vars:
+        installation_type: web_server
+  tags:
+    - angie
+
+- name: Install Angie Pro
+  hosts: all
+  roles:
+    - role: web_server
+      vars:
+        installation_type: web_server_pro
+  tags:
+    - angie-pro
+
+- name: Install Angie in docker
+  hosts: all
+  roles:
+    - role: web_server
+      vars:
+        installation_type: web_server_docker
+  tags:
+    - angie-docker
+
+- name: Install wordpress
+  hosts: all
+  roles:
+    - role: wordpress
+      vars:
+        installation_type: wordpress
+  tags:
+    - angie
+    - angie-pro
+
+- name: Install backend's in docker for tests
+  hosts: all
+  roles:
+    - role: docker_backends
+  tags:
+    - backend
+    - angie
+    - angie-pro
+
+- name: Angie certs backup
+  hosts: all
+  roles:
+    - role: angie_certs_backup
+      vars:
+        installation_type: certs_backup
+  tags:
+    - angie
+    - angie-pro

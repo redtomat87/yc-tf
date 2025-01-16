@@ -9,7 +9,7 @@
 ## Настройка Terraform
 
 ### Установка
-Следуйте [инструкции по установке и настройке Terraform](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/terraform-quickstart).
+Следуйте [инструкции по установке и настройке Terraform от Yandex](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/terraform-quickstart).
 
 ### Настройка переменных
 Все необходимые переменные находятся в шаблоне `terraform.tfvars.sample`. Перед использованием:

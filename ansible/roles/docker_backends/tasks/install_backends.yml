@@ -26,13 +26,13 @@
         mode: '0755'
         owner: root
         group: root
-    
+
     - name: Download Docker's GPG key
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
-    
+
     - name: Add Docker's GPG key to the trusted keyring
       ansible.builtin.apt_key:
         file: /etc/apt/keyrings/docker.asc

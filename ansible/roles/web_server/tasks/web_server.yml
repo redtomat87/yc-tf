@@ -32,12 +32,13 @@
         dest: "/etc/apt/trusted.gpg.d/angie-signing.gpg"
         mode: '0644'
 
-    - name: Get Angie repository line
-      ansible.builtin.shell: |
-        set -o pipefail && . /etc/os-release && echo "deb https://download.angie.software/angie/$ID/$VERSION_ID $VERSION_CODENAME main" | sudo tee /etc/apt/sources.list.d/angie.list > /dev/null
-      args:
-        executable: /bin/bash
-      changed_when: false
+    - name: Add Angie repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb https://download.angie.software/angie/{{ ansible_distribution | lower }}/{{ ansible_distribution_version }} 
+          {{ ansible_distribution_release }} main
+        state: present
+        update_cache: true
 
     - name: Installing angie with extra modules
       ansible.builtin.apt:
@@ -121,9 +122,9 @@
   tags:
     - 'angie'
 
-- name: Change permissions of directories and files
-  ansible.builtin.shell:
-    cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
+# - name: Change permissions of directories and files
+#   ansible.builtin.shell:
+#     cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
 
 
 - name: Maintain Angie configurations with validation and rollback

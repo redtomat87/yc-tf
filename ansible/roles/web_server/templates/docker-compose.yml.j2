@@ -2,18 +2,19 @@ version: '3'
 
 services:
   angie:
-    image: docker.angie.software/angie:1.7.0
+    image: docker.angie.software/angie:1.8.1
     container_name: angie
     volumes:
       - /var/www:/usr/share/angie/html:ro
-      - /opt/angie/angie.conf:/etc/angie/angie.conf:ro
+      - /etc/angie/angie.conf:/etc/angie/angie.conf:ro
+      - /var/lib/angie/acme:/var/lib/angie/acme
     ports:
-      - "8080:80"
+      - "80:80"
       - "443:443"
     networks:
-      - balancer_network
-    restart: always
+      - backend_network
+    restart: unless-stopped
 
 networks:
-  balancer_network:
+  backend_network:
     external: true

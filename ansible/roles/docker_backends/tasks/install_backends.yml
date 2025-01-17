@@ -1,7 +1,7 @@
 - name: Install and configure Docker
   become: true
   tags:
-    - install
+    - install-docker
   block:
     - name: Install initial dependencies
       ansible.builtin.apt:
@@ -15,26 +15,28 @@
           - python3-setuptools
           - python3-docker
           - docker-compose
+          - fail2ban
         state: present
         update_cache: true
-        cache_valid_time: 3600
 
-    - name: Create keyrings directory
+    - name: Ensure the keyring directory exists
       ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
-
+        owner: root
+        group: root
+    
     - name: Download Docker's GPG key
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
-
-    - name: Get Ubuntu version codename
-      ansible.builtin.command: lsb_release -cs
-      register: ubuntu_codename
-      changed_when: false
+    
+    - name: Add Docker's GPG key to the trusted keyring
+      ansible.builtin.apt_key:
+        file: /etc/apt/keyrings/docker.asc
+        state: present
 
     - name: Get system architecture
       ansible.builtin.command: dpkg --print-architecture
@@ -46,10 +48,8 @@
         repo: >-
           deb [arch={{ system_architecture.stdout }}
           signed-by=/etc/apt/keyrings/docker.asc]
-          https://download.docker.com/linux/ubuntu
-          {{ ubuntu_codename.stdout }} stable
+          https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
         state: present
-        filename: docker
         update_cache: true
 
     - name: Install Docker packages
@@ -65,39 +65,24 @@
 
 - name: Ensure Docker is running
   block:
-    - name: Ensure Docker service is enabled
-      ansible.builtin.service:
-        name: docker
-        enabled: true
+    - name: Wait for Docker service to stabilize
+      ansible.builtin.pause:
+        seconds: 20
 
     - name: Start and verify Docker service
       ansible.builtin.systemd:
         name: docker
         state: started
+        enabled: true
         daemon_reload: true
       register: docker_status
-      until: docker_status.status.ActiveState == 'active'
-      retries: 10
-      delay: 15
+      retries: 30
+      delay: 20
       changed_when: false
 
     - name: Debug docker_status
       ansible.builtin.debug:
         var: docker_status
-
-    - name: Restart Docker service if not running
-      ansible.builtin.service:
-        name: docker
-        state: restarted
-      when: docker_status.status.ActiveState != 'active'
-      ignore_errors: true
-
-    - name: Wait for Docker service to be ready
-      ansible.builtin.wait_for:
-        path: /var/run/docker.sock
-        state: present
-        delay: 10
-        timeout: 120
 
   rescue:
     - name: Stop docker service
@@ -110,8 +95,8 @@
         name: docker
         state: restarted
       register: docker_status
-      until: docker_status.status.ActiveState == 'active'
-      retries: 10
+      until: docker_status.status is defined and docker_status.status.ActiveState == !'active'
+      retries: 15
       delay: 15
       changed_when: false
 
@@ -121,7 +106,7 @@
         name: docker
         state: started
       register: docker_status
-      until: docker_status.status.ActiveState == 'active'
+      until: docker_status.status is defined and docker_status.status.ActiveState == 'active'
       retries: 10
       delay: 5
       changed_when: false

@@ -12,7 +12,7 @@ mysql:
     user_password: "testtest"
 
 keycloak:
-  KC_VERSION: 26.0.8
+  KC_VERSION: 26.1.0
 # The link that will be used by the Grafana to redirect to the Keycloak
   KC_HOSTNAME: auth.ru
   KC_PORT: 8082

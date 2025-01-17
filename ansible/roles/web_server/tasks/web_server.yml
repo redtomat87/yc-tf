@@ -7,7 +7,6 @@
         name:
           - ca-certificates
           - apt-transport-https
-          - lsb-release
           - ca-certificates
           - curl
           - gnupg2

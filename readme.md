@@ -31,13 +31,14 @@ terraform init
 terraform plan
 terraform apply
 ```
-
+На этом этапе будут созданы виртуальные машины, количество и ресурсы которых определены в файле terraform.tfvars. Так-же будут созданы файлы ansible/inventories/hosts.yaml и 
+ansible/inventories/hosts.ini содержащие имена хостов (которые соответствуют именам в списке переменной vm в файле terraform.tfvars) и ip адреса для дальнейшей работы с ansible.
 
 
 ## Настройка Ansible
 
 ### Общая информация
-Перед началом работы с Ansible перейдите в директорию `ansible/`.
+Перед началом работы с Ansible перейдите в директорию `ansible/`. 
 
 ### Переменные
 - **Общие переменные**: находятся в файле `inventories/group_vars/all/vars.yaml`.
@@ -49,6 +50,15 @@ terraform apply
 
 
 ## Установка компонентов
+
+## Установка всех компонентов с бэкапом на локальный хост полученных во время выполнения плейбука TLS сертификатов
+Для выполнения всех ролей в рамках одного плейбука
+```bash
+ansible-playbook all_playbooks.yml --tags angie
+```
+Для деплоя open-source версии angie, либо тег --angie-pro для версии Pro (Версия Pro требует наличие сертификата и ключа, подробности ниже).
+
+---
 
 ### Установка Angie (open-source версия)
 Для установки open-source версии Angie выполните:
@@ -94,16 +104,6 @@ ansible-playbook backends.yml
 ```bash
 ansible-playbook backup.yml
 ```
-
----
-
-
-## Бэкап TLS сертификатов
-Для выполнения всей действий в рамках одного плейбука
-```bash
-ansible-playbook all_playbooks.yml
-```
-
 
 ---
 

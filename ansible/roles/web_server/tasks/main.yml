@@ -1,2 +1,6 @@
+- name: 'Run full upgrade if full-upgrade tag is specified'
+  ansible.builtin.import_tasks: full_upgrade.yml
+  when: "'full-upgrade' in ansible_run_tags"
+
 - name: 'INSTALL web_server'
   ansible.builtin.import_tasks: "{{ installation_type }}.yml"

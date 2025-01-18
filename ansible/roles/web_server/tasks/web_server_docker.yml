@@ -2,7 +2,6 @@
   notify: Restart angie
   tags: 'angie-docker'
   block:
-
     - name: Ensure the keyring directory exists
       ansible.builtin.file:
         path: /etc/angie
@@ -55,7 +54,7 @@
   block:
     - name: Install initial dependencies
       ansible.builtin.apt:
-        pkg:
+        name:
           - apt-transport-https
           - ca-certificates
           - curl
@@ -68,6 +67,7 @@
           - fail2ban
         state: present
         update_cache: true
+        lock_timeout: 600
 
     - name: Ensure the keyring directory exists
       ansible.builtin.file:
@@ -100,7 +100,6 @@
           signed-by=/etc/apt/keyrings/docker.asc]
           https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
         state: present
-        update_cache: true
 
     - name: Install Docker packages
       ansible.builtin.apt:
@@ -112,6 +111,7 @@
           - docker-compose-plugin
         state: present
         update_cache: true
+        lock_timeout: 600
 
 - name: Ensure Docker is running
   block:
@@ -145,7 +145,7 @@
         name: docker
         state: restarted
       register: docker_status
-      until: docker_status.status is defined and docker_status.status.ActiveState == !'active'
+      until: docker_status.status is defined and docker_status.status.ActiveState == 'active'
       retries: 15
       delay: 15
       changed_when: false

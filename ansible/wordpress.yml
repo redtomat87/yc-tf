@@ -5,7 +5,7 @@
       vars:
         installation_type: wordpress
   tags:
-    - angie
+    - wordpress
 
 # - name: Install wordpress in docker
 #   hosts: all

@@ -1,0 +1,7 @@
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: full
+    update_cache: true
+    lock_timeout: 600
+  tags:
+    - 'full-upgrade'

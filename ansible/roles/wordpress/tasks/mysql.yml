@@ -1,118 +1,118 @@
-- name: Install MySQL server
-  ansible.builtin.apt:
-    name:
-      - python3-pymysql
-      - mysql-server
-    state: present
-
-- name: Check MySQL service status
-  ansible.builtin.service:
-    name: mysql
-    state: started
-  register: mysql_service_status
-  failed_when: mysql_service_status.status.ActiveState != "active"
-  changed_when: false
-
-- name: Check if MySQL is using socket authentication
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    query: SELECT 1
-  register: mysql_socket_auth
-  ignore_errors: true
-
-- name: Set MySQL root password for the first time (socket auth)
-  community.mysql.mysql_user:
-    name: root
-    host: localhost
-    password: "{{ mysql.root_password }}"
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    priv: '*.*:ALL,GRANT'
-    plugin: mysql_native_password
-    state: present
-  when:
-    - mysql_socket_auth is success
-    - mysql.root_password != ""
-
-- name: Check current MySQL root auth method
-  community.mysql.mysql_query:
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-    query: SELECT plugin FROM mysql.user WHERE User='root' AND Host='localhost';
-  register: mysql_root_auth_method
-  ignore_errors: true
-
-- name: Change MySQL root authentication to use password
-  community.mysql.mysql_user:
-    name: root
-    host: localhost
-    password: "{{ mysql.root_password }}"
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-    priv: '*.*:ALL,GRANT'
-    plugin: mysql_native_password
-    state: present
-  when:
-    - mysql.root_password != ""
-    - mysql_root_auth_method.failed or (mysql_root_auth_method.query_result[0][0] != 'mysql_native_password')
-
-- name: Display MySQL service status
-  ansible.builtin.debug:
-    msg: "MySQL service is {{ mysql_service_status.status.ActiveState }}"
-
-- name: Remove anonymous MySQL users
-  community.mysql.mysql_user:
-    name: ''
-    host_all: true
-    state: absent
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-
-- name: Remove test database
-  community.mysql.mysql_db:
-    name: test
-    state: absent
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-
-
-- name: Create MySQL database for WordPress
-  community.mysql.mysql_db:
-    name: "{{ mysql.wordpress.db }}"
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-
-
-- name: Create MySQL user for WordPress with remote access
-  community.mysql.mysql_user:
-    name: "{{ mysql.wordpress.user }}"
-    host: '%'
-    password: "{{ mysql.wordpress.user_password }}"
-    priv: "{{ mysql.wordpress.db }}.*:ALL"
-    state: present
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-
-
-- name: Flush MySQL privileges
-  community.mysql.mysql_query:
-    login_unix_socket: /var/run/mysqld/mysqld.sock
-    login_user: root
-    login_password: "{{ mysql.root_password }}"
-    query: FLUSH PRIVILEGES;
-
-
-- name: Configure MySQL bind addresses
-  community.general.ini_file:
-    path: /etc/mysql/mysql.conf.d/mysqld.cnf
-    section: mysqld
-    option: "{{ item.option }}"
-    value: "{{ ansible_default_ipv4.address }}"
-  loop:
-    - { option: 'bind-address' }
-    - { option: 'mysqlx-bind-address' }
+- name: Installing MySQL
   notify: Restart MySQL
+  block:
+    - name: Install MySQL server
+      ansible.builtin.apt:
+        name:
+          - python3-pymysql
+          - mysql-server
+        state: present
+        lock_timeout: 600
+
+    - name: Check MySQL service status
+      ansible.builtin.service:
+        name: mysql
+        state: started
+      register: mysql_service_status
+      failed_when: mysql_service_status.status.ActiveState != "active"
+      changed_when: false
+
+    - name: Check if MySQL is using socket authentication
+      community.mysql.mysql_query:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        query: SELECT 1
+      register: mysql_socket_auth
+      ignore_errors: true
+
+    - name: Set MySQL root password for the first time (socket auth)
+      community.mysql.mysql_user:
+        name: root
+        host: localhost
+        password: "{{ mysql.root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        priv: '*.*:ALL,GRANT'
+        plugin: mysql_native_password
+        state: present
+        column_case_sensitive: true
+      when:
+        - mysql_socket_auth is success
+        - mysql.root_password != ""
+
+    - name: Check current MySQL root auth method
+      community.mysql.mysql_query:
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+        query: SELECT plugin FROM mysql.user WHERE User='root' AND Host='localhost';
+      register: mysql_root_auth_method
+      ignore_errors: true
+
+    - name: Change MySQL root authentication to use password
+      community.mysql.mysql_user:
+        name: root
+        host: localhost
+        password: "{{ mysql.root_password }}"
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+        priv: '*.*:ALL,GRANT'
+        plugin: mysql_native_password
+        state: present
+      when:
+        - mysql.root_password != ""
+        - mysql_root_auth_method.failed or (mysql_root_auth_method.query_result[0][0] != 'mysql_native_password')
+
+    - name: Display MySQL service status
+      ansible.builtin.debug:
+        msg: "MySQL service is {{ mysql_service_status.status.ActiveState }}"
+
+    - name: Remove anonymous MySQL users
+      community.mysql.mysql_user:
+        name: ''
+        host_all: true
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+
+    - name: Remove test database
+      community.mysql.mysql_db:
+        name: test
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+
+    - name: Create MySQL database for WordPress
+      community.mysql.mysql_db:
+        name: "{{ mysql.wordpress.db }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+
+    - name: Create MySQL user for WordPress with remote access
+      community.mysql.mysql_user:
+        name: "{{ mysql.wordpress.user }}"
+        host: '%'
+        password: "{{ mysql.wordpress.user_password }}"
+        priv: "{{ mysql.wordpress.db }}.*:ALL"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+
+    - name: Flush MySQL privileges
+      community.mysql.mysql_query:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+        query: FLUSH PRIVILEGES;
+
+    - name: Configure MySQL bind addresses
+      community.general.ini_file:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        section: mysqld
+        option: "{{ item.option }}"
+        value: "{{ ansible_default_ipv4.address }}"
+      loop:
+        - { option: 'bind-address' }
+        - { option: 'mysqlx-bind-address' }

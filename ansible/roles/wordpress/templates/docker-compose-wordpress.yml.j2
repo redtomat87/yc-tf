@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  db:
+    image: mysql:8.0.40-debian
+    container_name: db
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=wordpress
+    volumes:
+      - dbdata:/var/lib/mysql
+    command: '--default-authentication-plugin=mysql_native_password'
+    networks:
+      - app-network
+
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:6.0.1-php8.0-fpm-alpine
+    container_name: wordpress
+    restart: unless-stopped
+    environment:
+      - WORDPRESS_DB_HOST={{ ansible_default_ipv4.address }}:3306
+      - WORDPRESS_DB_USER={{ mysql.wordpress.user }}
+      - WORDPRESS_DB_PASSWORD={{ mysql.wordpress.user_password }}
+      - WORDPRESS_DB_NAME=w{ mysql.wordpress.db }}
+    volumes:
+      - wordpress:/var/www/html
+    networks:
+      - app-network
+volumes:
+  wordpress:
+  dbdata:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,175 +1,137 @@
-- name: Creating cert dir
-  ansible.builtin.file:
-    path: /etc/ssl/angie/
-    state: directory
-    mode: '755'
-    owner: _apt
-    group: nogroup
+- name: Angie Installation
   tags:
     - 'angie-pro'
+  block:
+    - name: Creating cert dir
+      ansible.builtin.file:
+        path: /etc/ssl/angie/
+        state: directory
+        mode: '750'
+        owner: _apt
+        group: nogroup
 
-- name: Copy Angie certificates and key
-  ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: _apt
-    group: nogroup
-    mode: "{{ item.mode }}"
-  loop:
-    - { src: "{{ angie.cert_src }}", dest: "{{ angie.cert_dest }}", mode: "0600" }
-    - { src: "{{ angie.key_src }}", dest: "{{ angie.key_dest }}", mode: "0600" }
-  tags:
-    - 'angie-pro'
+    - name: Copy Angie certificates and key
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: _apt
+        group: nogroup
+        mode: "{{ item.mode }}"
+      loop:
+        - { src: "{{ angie.cert_src }}", dest: "{{ angie.cert_dest }}", mode: "0600" }
+        - { src: "{{ angie.key_src }}", dest: "{{ angie.key_dest }}", mode: "0600" }
 
-- name: Installing auxiliary packages
-  ansible.builtin.apt:
-    update_cache: true
-    name:
-      - apt-transport-https
-      - lsb-release
-      - ca-certificates
-      - curl
-      - gnupg2
-      - unzip
-      - fail2ban
-      - prometheus-node-exporter
-    state: present
-  tags:
-    - 'angie-pro'
+    - name: Installing auxiliary packages
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - apt-transport-https
+          - lsb-release
+          - ca-certificates
+          - curl
+          - gnupg2
+          - unzip
+          - fail2ban
+          - prometheus-node-exporter
+        state: present
+        lock_timeout: 600
 
-- name: Copy template fail2ban jail file
-  ansible.builtin.template:
-    src: jail.local.j2
-    dest: /etc/fail2ban/jail.local
-    owner: root
-    group: root
-    mode: '0600'
-    backup: true
+    - name: Copy template fail2ban jail file
+      ansible.builtin.template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: '0600'
+        backup: true
 
-- name: Downloading Angie repo key
-  ansible.builtin.get_url:
-    url: https://angie.software/keys/angie-signing.gpg
-    dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
-  tags:
-    - 'angie-pro'
+    - name: Add Angie PRO repository key
+      ansible.builtin.get_url:
+        url: https://angie.software/keys/angie-signing.gpg
+        dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
+        mode: '0644'
 
-- name: Setup Angie PRO dir
-  ansible.builtin.shell: |
-    . /etc/os-release && echo "deb https://download.angie.software/angie-pro/$ID/$VERSION_ID $VERSION_CODENAME main" | tee /etc/apt/sources.list.d/angie.list > /dev/null
-  args:
-    executable: /bin/bash
-  tags:
-    - 'angie-pro'
+    - name: Configuring Angie PRO repo
+      ansible.builtin.blockinfile:
+        path: /etc/apt/apt.conf.d/90download-angie
+        create: yes
+        mode: '0644'
+        block: |
+          Acquire::https::download.angie.software::Verify-Peer "true";
+          Acquire::https::download.angie.software::Verify-Host "true";
+          Acquire::https::download.angie.software::SslCert     "/etc/ssl/angie/angie-repo.crt";
+          Acquire::https::download.angie.software::SslKey      "/etc/ssl/angie/angie-repo.key";
+        marker: "# {mark} ANSIBLE MANAGED BLOCK FOR ANGIE PRO REPO"
 
-- name: Check Angie sources list content
-  ansible.builtin.command: cat /etc/apt/sources.list.d/angie.list
-  register: angie_sources
-  changed_when: false
-  tags:
-    - 'angie-pro'
+    - name: Add Angie repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb https://download.angie.software/angie-pro/{{ ansible_distribution | lower }}/{{ ansible_distribution_version }}
+          {{ ansible_distribution_release }} main
+        state: present
 
-- name: Display Angie sources list content
-  ansible.builtin.debug:
-    var: angie_sources.stdout
-  tags:
-    - 'angie-pro'
+    # - name: Configuring Angie repo
+    #   ansible.builtin.copy:
+    #     mode: '0644'
+    #     dest: /etc/apt/apt.conf.d/90download-angie
+    #     content: |
+    #       Acquire::https::download.angie.software::Verify-Peer "true";
+    #       Acquire::https::download.angie.software::Verify-Host "true";
+    #       Acquire::https::download.angie.software::SslCert     "/etc/ssl/angie/angie-repo.crt";
+    #       Acquire::https::download.angie.software::SslKey      "/etc/ssl/angie/angie-repo.key";
 
+    - name: Installing angie-pro with extra modules
+      ansible.builtin.apt:
+        name:
+          - angie-pro
+          - angie-pro-module-zstd
+          - angie-pro-module-brotli
+          - angie-pro-console-light
+        state: present
+        update_cache: true
+        lock_timeout: 600
 
-- name: Configuring Angie repo
-  ansible.builtin.copy:
-    mode: '0644'
-    dest: /etc/apt/apt.conf.d/90download-angie
-    content: |
-      Acquire::https::download.angie.software::Verify-Peer "true";
-      Acquire::https::download.angie.software::Verify-Host "true";
-      Acquire::https::download.angie.software::SslCert     "/etc/ssl/angie/angie-repo.crt";
-      Acquire::https::download.angie.software::SslKey      "/etc/ssl/angie/angie-repo.key";
-  tags:
-    - 'angie-pro'
+- name: Prepare Angie Configuration
+  block:
+    - name: Check default Angie configuration
+      ansible.builtin.stat:
+        path: "/etc/angie/http.d/default.conf"
+      register: default_config
 
-- name: Installing angie-pro with extra modules
-  ansible.builtin.apt:
-    name:
-      - angie-pro
-      - angie-pro-module-zstd
-      - angie-pro-module-brotli
-      - angie-pro-console-light
-    state: present
-    update_cache: true
-  tags:
-    - 'angie-pro'
+    - name: Backup default Angie configuration
+      ansible.builtin.copy:
+        remote_src: true
+        src: "/etc/angie/http.d/default.conf"
+        dest: "/etc/angie/http.d/default.conf.old"
+        mode: preserve
+        owner: "{{ default_config.stat.pw_name }}"
+        group: "{{ default_config.stat.gr_name }}"
+      when: default_config.stat.exists
 
-- name: Check if dafault angie config exists
-  ansible.builtin.stat:
-    path: "/etc/angie/http.d/default.conf"
-  register: check_file_name
-
-- name: Make back default angie config
-  ansible.builtin.copy:
-    remote_src: true
-    src: "/etc/angie/http.d/default.conf"
-    dest: "/etc/angie/http.d/default.conf.old"
-  when: check_file_name.stat.exists
-
-- name: Remove old default angie file
-  ansible.builtin.file:
-    path: "/etc/angie/http.d/default.conf"
-    state: absent
-  when: check_file_name.stat.exists
-
-- name: Synchronize ACME directories
-  ansible.posix.synchronize:
-    src: "{{ local_backup.dir }}/{{ item }}/"
-    dest: "/var/lib/angie/acme/{{ item }}/"
-    mode: push
-    recursive: true
-    checksum: true
-    rsync_opts:
-      - "--chmod=D0700,F0600"
-      - "--chown=root:root"
-      - "--rsync-path='sudo rsync'"
-      - "--ignore-existing"
-      - "--update"
-  loop: "{{ acme.dirs }}"
-  delegate_to: localhost
-  become: false
-  when:
-    - (local_backup.dir + '/' + item) is directory
-
-- name: Creating site dir
-  ansible.builtin.file:
-    path: /opt/mysite/
-    state: directory
-    mode: '0750'
-    owner: www-data
-    group: angie
-  tags:
-    - 'angie-pro'
-
-- name: Copy the archived file to the remote host
-  ansible.builtin.copy:
-    mode: 0640
-    owner: www-data
-    group: www-data
-    src: static_site-252831-96c1e2.zip
-    dest: /tmp/static_site-252831-96c1e2.zip
-  tags:
-    - 'angie-pro'
-
-- name: Extract the archived file to the specified directory with specific permissions
-  ansible.builtin.unarchive:
-    src: /tmp/static_site-252831-96c1e2.zip
-    dest: /opt/mysite
-    remote_src: true
-    owner: www-data
-    group: www-data
-  tags:
-    - 'angie-pro'
-
-- name: Change permissions of directories and files
-  ansible.builtin.shell:
-    cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
-
+    - name: Remove default Angie configuration
+      ansible.builtin.file:
+        path: "/etc/angie/http.d/default.conf"
+        state: absent
+      when: default_config.stat.exists
+    
+    - name: Synchronize ACME directories
+      ansible.posix.synchronize:
+        src: "{{ local_backup.dir }}/{{ item }}/"
+        dest: "/var/lib/angie/acme/{{ item }}/"
+        mode: push
+        recursive: true
+        checksum: true
+        rsync_opts:
+          - "--chmod=D0700,F0600"
+          - "--chown=root:root"
+          - "--rsync-path='sudo rsync'"
+          - "--ignore-existing"
+          - "--update"
+      loop: "{{ acme.dirs }}"
+      delegate_to: localhost
+      become: false
+      when:
+        - (local_backup.dir + '/' + item) is directory
 
 - name: Maintain Angie configurations with validation and rollback
   notify: Restart angie
@@ -274,3 +236,29 @@
         path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
         state: absent
       when: updated_auth_file is changed and validation is success
+
+- name: Copying static site
+  block:
+    - name: Creating site dir
+      ansible.builtin.file:
+        path: /opt/mysite/
+        state: directory
+        mode: '0750'
+        owner: www-data
+        group: angie
+
+    - name: Copy the archived file to the remote host
+      ansible.builtin.copy:
+        src: static_site-252831-96c1e2.zip
+        dest: /tmp/static_site-252831-96c1e2.zip
+        mode: preserve
+        owner: www-data
+        group: www-data
+
+    - name: Extract the archived file to the specified directory with specific permissions
+      ansible.builtin.unarchive:
+        src: /tmp/static_site-252831-96c1e2.zip
+        dest: /opt/mysite
+        remote_src: true
+        owner: www-data
+        group: www-data

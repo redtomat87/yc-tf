@@ -1,66 +1,194 @@
-- name: Install required system packages
-  apt:
-    pkg:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - software-properties-common
-      - gnupg
-      - python3-pip
-      - python3-setuptools
-      - python3-docker
-      - fail2ban
-    state: latest
-    update_cache: true
+- name: Maintain Angie configurations with validation and rollback
+  notify: Restart angie
+  tags: 'angie-docker'
+  block:
+    - name: Ensure the keyring directory exists
+      ansible.builtin.file:
+        path: /etc/angie
+        state: directory
+        mode: '755'
+        owner: root
+        group: root
 
-- name: Add Docker GPG apt Key
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+    - name: Ensure the certificates directory exists
+      ansible.builtin.file:
+        path: "/var/lib/angie/acme"
+        state: directory
+        mode: '700'
+        owner: root
+        group: root
 
-- name: Add Docker Repository
-  apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
-    state: present
+    - name: Synchronize ACME directories
+      ansible.posix.synchronize:
+        src: "{{ local_backup.dir }}/{{ item }}/"
+        dest: "/var/lib/angie/acme/{{ item }}/"
+        mode: push
+        recursive: true
+        checksum: true
+        rsync_opts:
+          - "--chmod=D0700,F0600"
+          - "--chown=root:root"
+          - "--rsync-path='sudo rsync'"
+          - "--ignore-existing"
+          - "--update"
+      loop: "{{ acme.dirs }}"
+      delegate_to: localhost
+      become: false
+      when:
+        - (local_backup.dir + '/' + item) is directory
 
-- name: Update apt and install docker-ce
-  apt:
-    name: docker-ce
-    state: latest
-    update_cache: true
+    - name: Copy main Angie configuration template and backup existing config
+      ansible.builtin.template:
+        src: angie.conf.j2
+        dest: "{{ angie.conf_dest }}"
+        backup: true
+        mode: '0640'
+        owner: root
+        group: root
+      register: updated_main
 
-- name: Ensure Docker service is running
-  service:
-    name: docker
-    state: started
-    enabled: true
-
-- name: Create Docker network
-  docker_network:
-    name: balancer_network
-    driver: bridge
-
-- name: Create directory for Docker Compose file
-  file:
-    path: /opt/angie
-    state: directory
-    mode: '0755'
-
-- name: Copy Docker Compose file
-  template:
-    src: docker-compose.yml.j2
-    dest: /opt/angie/docker-compose.yml
-    mode: '0644'
-
-- name: Copying angie.conf
-  template:
-    src: angie.conf.j2
-    dest: /opt/angie/angie.conf
-    mode: '0644'
-
-
-- name: Run Docker Compose
-  command: docker compose -f /opt/angie/docker-compose.yml up -d
-  args:
-    chdir: /opt/angie
+- name: Install and configure Docker
   become: true
+  tags:
+    - angie-docker
+  block:
+    - name: Install initial dependencies
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - gnupg
+          - python3-pip
+          - python3-setuptools
+          - python3-docker
+          - docker-compose
+          - fail2ban
+        state: present
+        update_cache: true
+        lock_timeout: 600
+
+    - name: Ensure the keyring directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Download Docker's GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker's GPG key to the trusted keyring
+      ansible.builtin.apt_key:
+        file: /etc/apt/keyrings/docker.asc
+        state: present
+
+    - name: Get system architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: system_architecture
+      changed_when: false
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ system_architecture.stdout }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+        lock_timeout: 600
+
+- name: Ensure Docker is running
+  block:
+    - name: Wait for Docker service to stabilize
+      ansible.builtin.pause:
+        seconds: 20
+
+    - name: Start and verify Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+        daemon_reload: true
+      register: docker_status
+      retries: 30
+      delay: 20
+      changed_when: false
+
+    - name: Debug docker_status
+      ansible.builtin.debug:
+        var: docker_status
+
+  rescue:
+    - name: Stop docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: stopped
+
+    - name: Start and verify Docker service
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+      register: docker_status
+      until: docker_status.status is defined and docker_status.status.ActiveState == 'active'
+      retries: 15
+      delay: 15
+      changed_when: false
+
+  always:
+    - name: Verify Docker service is running
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+      register: docker_status
+      until: docker_status.status is defined and docker_status.status.ActiveState == 'active'
+      retries: 10
+      delay: 5
+      changed_when: false
+
+- name: Configure Docker network and application
+  become: true
+  tags:
+    - angie-docker
+  block:
+    - name: Create Docker network
+      community.docker.docker_network:
+        name: backend_network
+        driver: bridge
+        state: present
+      register: docker_network
+
+    - name: Copy Docker Compose file
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: /opt/compose/docker-compose-angie.yml
+        mode: '0644'
+        owner: root
+        group: root
+        validate: docker compose -f %s config
+      register: compose_file
+
+    - name: Deploy Docker Compose stack
+      community.docker.docker_compose_v2:
+        project_src: /opt/compose
+        files:
+          - docker-compose-angie.yml
+        state: present
+        pull: missing
+      register: docker_stack
+      notify: Cleanup docker

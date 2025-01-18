@@ -3,3 +3,10 @@
     name: angie
     state: restarted
     enabled: true
+
+- name: Cleanup docker
+  community.docker.docker_prune:
+    images: true
+    images_filters:
+      dangling: true
+  become: true

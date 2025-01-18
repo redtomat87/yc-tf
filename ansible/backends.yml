@@ -1,8 +1,9 @@
-- name: Install backend's in docker for tests
+- name: Install backend's in docker
   hosts: all
+  gather_facts: true
   roles:
     - role: docker_backends
   tags:
     - backend
-    - install
+    - install-docker
     - deploy

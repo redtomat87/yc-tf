@@ -1,62 +1,81 @@
-- name: Apt cache update
-  ansible.builtin.apt:
-    update_cache: true
-  tags:
-    - 'angie'
+- name: Installing wordpress
+  tags: wordpress
+  block:
+    - name: Install PHP and required modules
+      become: true
+      ansible.builtin.apt:
+        name:
+          - php-fpm
+          - php-curl
+          - php-mysqli
+          - php-gd
+          - php-intl
+          - php-mbstring
+          - php-soap
+          - php-xml
+          - php-xmlrpc
+          - php-zip
+        state: present
 
-- name: Install PHP and required modules
-  become: true
-  ansible.builtin.apt:
-    name:
-      - php-fpm
-      - php-curl
-      - php-mysqli
-      - php-gd
-      - php-intl
-      - php-mbstring
-      - php-soap
-      - php-xml
-      - php-xmlrpc
-      - php-zip
-    state: present
+    - name: Creating cache directory
+      ansible.builtin.file:
+        path: /opt/cache/worpress
+        state: directory
+        mode: '755'
+        owner: www-data
+        group: www-data
 
-- name: Creating cache directory
-  ansible.builtin.file:
-    path: /opt/cache/worpress
-    state: directory
-    mode: '755'
-    owner: www-data
-    group: www-data
-  tags:
-    - 'angie'
+    - name: Install WordPress
+      become: true
+      ansible.builtin.get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: /tmp/latest.tar.gz
+        mode: '0644'
 
-- name: Install WordPress
-  become: true
-  ansible.builtin.get_url:
-    url: https://wordpress.org/latest.tar.gz
-    dest: /tmp/latest.tar.gz
-    mode: '0644'
+    - name: Creating site dir
+      ansible.builtin.file:
+        path: /var/www/
+        state: directory
+        mode: '750'
+        owner: www-data
+        group: www-data
 
-- name: Creating site dir
-  ansible.builtin.file:
-    path: /var/www/
-    state: directory
-    mode: '750'
-    owner: www-data
-    group: www-data
+    - name: Extract wordpress
+      ansible.builtin.unarchive:
+        src: /tmp/latest.tar.gz
+        dest: /var/www/
+        remote_src: true
+        owner: www-data
+        group: www-data
 
-- name: Extract wordpress
-  ansible.builtin.unarchive:
-    src: /tmp/latest.tar.gz
-    dest: /var/www/
-    remote_src: true
-    owner: www-data
-    group: www-data
+    - name: Configure wp-config.php
+      become: true
+      ansible.builtin.template:
+        src: templates/wp-config.php.j2
+        dest: /var/www/wordpress/wp-config.php
+        mode: '0644'
+      notify: Restart MySQL
+
+    # - name: Set correct permissions for WordPress files
+    #   become: true
+    #   ansible.builtin.file:
+    #     path: /var/www/wordpress
+    #     owner: www-data
+    #     group: www-data
+    #     recurse: true
+    #     state: directory
+
+    - name: Cleanup temporary wordpress archive
+      become: true
+      ansible.builtin.file:
+        path: /tmp/latest.tar.gz
+        state: absent
 
 - name: Maintain Angie configurations with validation and rollback
+  notify: Restart angie
   block:
     - name: Copy main Angie configuration template and backup existing config
-      template:
+      ansible.builtin.template:
         src: angie.conf.j2
         dest: "{{ angie.conf_dest }}"
         backup: true
@@ -66,7 +85,7 @@
       register: updated_main
 
     - name: Copy WordPress site configuration template and backup existing config
-      template:
+      ansible.builtin.template:
         src: wordpress.conf.j2
         dest: "{{ sites.wordpress.site_agnie_config_path }}"
         backup: true
@@ -76,21 +95,21 @@
       register: updated_wordpress
 
     - name: Validate Angie configuration
-      command: angie -t
+      ansible.builtin.command: angie -t
       when: updated_main is changed or updated_wordpress is changed
       register: validation
       failed_when: validation.rc != 0
 
   rescue:
     - name: Restore previous main Angie configuration
-      copy:
+      ansible.builtin.copy:
         remote_src: true
         dest: "{{ angie.conf_dest }}"
         src: "{{ updated_main['backup_file'] }}"
       when: updated_main is changed
 
     - name: Restore previous WordPress site configuration
-      copy:
+      ansible.builtin.copy:
         remote_src: true
         dest: "{{ sites.wordpress.site_agnie_config_path }}"
         src: "{{ updated_wordpress['backup_file'] }}"
@@ -98,35 +117,13 @@
 
   always:
     - name: Clean up main config backup file
-      file:
+      ansible.builtin.file:
         path: "{{ updated_main['backup_file'] if updated_main is changed and 'backup_file' in updated_main else None }}"
         state: absent
       when: updated_main is changed and validation is success
 
     - name: Clean up WordPress config backup file
-      file:
+      ansible.builtin.file:
         path: "{{ updated_wordpress['backup_file'] if updated_wordpress is changed and 'backup_file' in updated_wordpress else None }}"
         state: absent
       when: updated_wordpress is changed and validation is success
-
-  notify: Restart angie
-
-- name: Configure wp-config.php
-  become: true
-  ansible.builtin.template:
-    src: templates/wp-config.php.j2
-    dest: /var/www/wordpress/wp-config.php
-    mode: '0644'
-  notify: Restart MySQL
-
-- name: Set correct permissions for WordPress files
-  become: true
-  ansible.builtin.file:
-    path: /var/www/wordpress
-    owner: www-data
-    group: www-data
-    recurse: true
-    state: directory
-
-
-

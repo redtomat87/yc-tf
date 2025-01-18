@@ -57,9 +57,8 @@ ansible/inventories/hosts.ini содержащие имена хостов (ко
 ```bash
 ansible-galaxy collection install -r collections/reuirements.yml
 ```
----
 
-Для деплоя open-source версии angie, либо тег --angie-pro для версии Pro (Версия Pro требует наличие сертификата и ключа, подробности ниже).
+---
 
 ## Установка всех компонентов с бэкапом на локальный хост полученных во время выполнения плейбука TLS сертификатов
 Для выполнения всех ролей в рамках одного плейбука c open-source версией Angie

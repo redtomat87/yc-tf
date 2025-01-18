@@ -15,6 +15,7 @@
           - prometheus-node-exporter
         state: present
         update_cache: true
+        lock_timeout: 600
 
     - name: Copy template fail2ban jail file
       ansible.builtin.template:
@@ -34,10 +35,9 @@
     - name: Add Angie repository
       ansible.builtin.apt_repository:
         repo: >-
-          deb https://download.angie.software/angie/{{ ansible_distribution | lower }}/{{ ansible_distribution_version }} 
+          deb https://download.angie.software/angie/{{ ansible_distribution | lower }}/{{ ansible_distribution_version }}
           {{ ansible_distribution_release }} main
         state: present
-        update_cache: true
 
     - name: Installing angie with extra modules
       ansible.builtin.apt:
@@ -48,6 +48,7 @@
           - angie-console-light
         state: present
         update_cache: true
+        lock_timeout: 600
 
 - name: Prepare Angie Configuration
   block:
@@ -72,59 +73,24 @@
         state: absent
       when: default_config.stat.exists
 
-- name: Synchronize ACME directories
-  ansible.posix.synchronize:
-    src: "{{ local_backup.dir }}/{{ item }}/"
-    dest: "/var/lib/angie/acme/{{ item }}/"
-    mode: push
-    recursive: true
-    checksum: true
-    rsync_opts:
-      - "--chmod=D0700,F0600"
-      - "--chown=root:root"
-      - "--rsync-path='sudo rsync'"
-      - "--ignore-existing"
-      - "--update"
-  loop: "{{ acme.dirs }}"
-  delegate_to: localhost
-  become: false
-  when:
-    - (local_backup.dir + '/' + item) is directory
-
-- name: Creating site dir
-  ansible.builtin.file:
-    path: /opt/mysite/
-    state: directory
-    mode: '0750'
-    owner: www-data
-    group: angie
-  tags:
-    - 'angie'
-
-- name: Copy the archived file to the remote host
-  ansible.builtin.copy:
-    src: static_site-252831-96c1e2.zip
-    dest: /tmp/static_site-252831-96c1e2.zip
-    mode: preserve
-    owner: www-data
-    group: www-data
-  tags:
-    - 'angie'
-
-- name: Extract the archived file to the specified directory with specific permissions
-  ansible.builtin.unarchive:
-    src: /tmp/static_site-252831-96c1e2.zip
-    dest: /opt/mysite
-    remote_src: true
-    owner: www-data
-    group: www-data
-  tags:
-    - 'angie'
-
-# - name: Change permissions of directories and files
-#   ansible.builtin.shell:
-#     cmd: "find /opt/mysite -type d -exec chmod 0750 {} +; find /opt/mysite -type f -exec chmod 0640 {} +"
-
+    - name: Synchronize ACME directories
+      ansible.posix.synchronize:
+        src: "{{ local_backup.dir }}/{{ item }}/"
+        dest: "/var/lib/angie/acme/{{ item }}/"
+        mode: push
+        recursive: true
+        checksum: true
+        rsync_opts:
+          - "--chmod=D0700,F0600"
+          - "--chown=root:root"
+          - "--rsync-path='sudo rsync'"
+          - "--ignore-existing"
+          - "--update"
+      loop: "{{ acme.dirs }}"
+      delegate_to: localhost
+      become: false
+      when:
+        - (local_backup.dir + '/' + item) is directory
 
 - name: Maintain Angie configurations with validation and rollback
   notify: Restart angie
@@ -229,3 +195,29 @@
         path: "{{ updated_auth_file['backup_file'] if updated_auth_file is changed and 'backup_file' in updated_auth_file else None }}"
         state: absent
       when: updated_auth_file is changed and validation is success
+
+- name: Copying static site
+  block:
+    - name: Creating site dir
+      ansible.builtin.file:
+        path: /opt/mysite/
+        state: directory
+        mode: '0750'
+        owner: www-data
+        group: angie
+
+    - name: Copy the archived file to the remote host
+      ansible.builtin.copy:
+        src: static_site-252831-96c1e2.zip
+        dest: /tmp/static_site-252831-96c1e2.zip
+        mode: preserve
+        owner: www-data
+        group: www-data
+
+    - name: Extract the archived file to the specified directory with specific permissions
+      ansible.builtin.unarchive:
+        src: /tmp/static_site-252831-96c1e2.zip
+        dest: /opt/mysite
+        remote_src: true
+        owner: www-data
+        group: www-data

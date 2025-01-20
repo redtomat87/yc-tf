@@ -27,7 +27,7 @@ variable "subnet_name" {
   default = "my-subnet"
 }
 
-variable "labels" {
+variable "common_labels" {
   type      = map(string)
   sensitive = true
 }
@@ -48,5 +48,6 @@ variable "vm" {
     network_name          = string
     subnet_name           = string
     v4_cidr_blocks        = list(string)
+    labels                = map(string)
   }))
 }

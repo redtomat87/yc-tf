@@ -10,15 +10,12 @@ variable "vm" {
     preemptible           = bool
     nat                   = bool
     boot_disk_auto_delete = bool
+    labels                = map(string)
   }))
 }
 
 variable "zone_of_availability" {
   type = string
-}
-
-variable "labels" {
-  type = map(string)
 }
 
 variable "ssh_open_key_file" {

@@ -3,7 +3,7 @@ resource "yandex_compute_instance" "vm" {
 
   name   = each.value.name
   zone   = var.zone_of_availability
-  labels = var.labels
+  labels = each.value.labels
 
   resources {
     cores         = each.value.cores
@@ -38,7 +38,7 @@ resource "yandex_compute_disk" "boot-disk" {
   zone     = var.zone_of_availability
   size     = each.value.boot_disk_size
   image_id = each.value.boot_disk_image
-  labels   = var.labels
+  labels   = each.value.labels
 }
 
 output "vm_instances" {

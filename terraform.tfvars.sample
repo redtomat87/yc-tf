@@ -1,37 +1,105 @@
-# Путь до вашего публичного SSH-ключа (например ~/.ssh/id_rsa.pub)
+# Этот файл содержит переменные для Terraform.
+
+# SSH ключ
+
+# Путь до вашего публичного SSH-ключа (например ~/.ssh/id_rsa.pub).
+# Этот ключ будет добавлен в authorized_keys на создаваемых виртуальных машинах.
 ssh_open_key_file = "~/.ssh/id_rsa.pub"
 
-# Конфигурация сети
-network_name   = "default"               # Имя сети, которая будет создана в Yandex Cloud. 
-subnet_name    = "my-subnet"             # Имя подсети, которая будет создана внутри сети.
-v4_cidr_blocks = ["192.168.10.0/24"]     # Список блоков адресов CIDR (например, ["192.168.10.0/24"]),которые будут использоваться для определения диапазона IP-адресов в подсети.
+# Общие метки
 
-# Лейблы для виртуальных машин и дисков в формате карты (map)
-labels = {
-  "otus"       = "angie",
-  "user_email" = "myname_at_mail_ru"
+# Общие метки, которые будут применены ко всем ресурсам (виртуальным машинам, дискам и т.д.).
+# Используются для организации и фильтрации ресурсов в Yandex Cloud.
+common_labels = {
+  "project"  = "pet",
+  "user_email" = "mr_tomat_at_mail.ru"
 }
 
-# Имена для виртуальных машин, записанные как список строк. Количество виртуальных машин 
-# будет соответствовать количеству элементов в списке.
-# Если vm = ["angie", "angie-second"], то будет создано 2 ВМ с именами angie и angie-second
-vm                 = ["angie"]
+# Конфигурация виртуальных машин (Yandex Compute Cloud)
 
-# Конфигурация дисков для ВМ
-vm_boot_disk_type        = "network-hdd"  # Тип диска у ВМ
-vm_boot_disk_size        = 15             # Размер диска в GB
-vm_boot_disk_image       = "f2e0hdv249kssjmokdkj"  # ID образа загрузочного диска, по умолчанию Ubuntu 24.04
-vm_boot_disk_auto_delete = true           # Удалять ли диск при удалении ВМ
+# Список конфигураций виртуальных машин. Каждая запись в списке описывает одну ВМ.
+vm = [
+  {
+    # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
+    name = "angie"
+    # Метки для данной конкретной виртуальной машины. Дополняют уникальныее метки ресурса к общим меткам common_labels.
+    labels = {
+      "environment" = "production"
+      "role"        = "webserver"
+    }
+    ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
+    ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
+    # Количество ядер CPU.
+    cores                = 2
+    # Объем оперативной памяти в GB.
+    memory               = 4
+    # Гарантированная доля vCPU (от 5 до 100%).
+    core_fraction        = 20
+    ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
+    boot_disk_type       = "network-hdd"
+    # Размер загрузочного диска в GB.
+    boot_disk_size       = 15
+    # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
+    boot_disk_image      = "fd8m5hqeuhbtbhltuab4" # Ubuntu 24.04 LTS
+    # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
+    preemptible          = true
+    # Включить ли NAT для виртуальной машины.
+    nat                  = true
+    # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
+    boot_disk_auto_delete = true
+    # Список DNS-записей для данной ВМ.
+    dns_records          = ["angie.redtomat.ru", "angie-backend.redtomat.ru"]
+    # Имя сети для ВМ
+    network_name         = "my-network"
+    # Имя подсети для ВМ
+    subnet_name          = "my-subnet"
+    # CIDR блок для подсети ВМ
+    v4_cidr_blocks        = ["192.168.10.0/24"]
+  },
+    {
+    # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
+    name = "example"
+    # Метки для данной конкретной виртуальной машины. Перезаписывают общие метки common_labels.
+    labels = {
+      "environment" = "production"
+      "role"        = "example_webserver"
+    }
+    ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
+    ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
+    # Количество ядер CPU.
+    cores                = 2
+    # Объем оперативной памяти в GB.
+    memory               = 4
+    # Гарантированная доля vCPU (от 5 до 100%).
+    core_fraction        = 20
+    ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
+    boot_disk_type       = "network-hdd"
+    # Размер загрузочного диска в GB.
+    boot_disk_size       = 15
+    # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
+    boot_disk_image      = "fd8m5hqeuhbtbhltuab4" # Ubuntu 24.04 LTS
+    # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
+    preemptible          = true
+    # Включить ли NAT для виртуальной машины (для доступа извне).
+    nat                  = true
+    # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
+    boot_disk_auto_delete = true
+    # Список DNS-записей для данной ВМ.
+    dns_records          = ["example.redtomat.ru", "example-backend.redtomat.ru"]
+    # Имя сети для ВМ
+    network_name         = "example-network"
+    # Имя подсети для ВМ
+    subnet_name          = "example-subnet"
+        # CIDR блок для подсети ВМ
+    v4_cidr_blocks        = ["192.168.20.0/24"]
+  }
+]
 
-# Конфигурация ресурсов для ВМ
-vm_cores                 = 2              # Количество ядер
-vm_memory                = 2              # Количество оперативной памяти в GB
-vm_core_fraction         = 20             # Гарантированная доля vCPU (от 5 до 100%)
-vm_preemptible           = true           # Прерываемая ли ВМ (preemptible)
-vm_nat                   = true           # Следует ли включить NAT для ВМ
+# Конфигурация DNS
+# Для корректной конфигурации DNS требуется делегирование вашего домена на Cloud DNS серверы yandex см. [дкументацию](https://yandex.cloud/ru/docs/troubleshooting/dns/how-to/delegate-public-zone)
 
-# Зона доступности в Yandex Cloud
-zone_of_availability      = "ru-central1-a"
+# Зона доступности в Yandex Cloud.
+zone_of_availability = "ru-central1-a"
 
-# имя DNS зоны
-dns_zone = "mydomain.com."
+# Имя DNS зоны. Должно заканчиваться точкой.
+dns_zone = "redtomat.ru."

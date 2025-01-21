@@ -123,4 +123,5 @@ ansible-playbook backup.yml
 
 ## Примечания
 - Проект находится в стадии разработки. Возможны изменения в конфигурации и функциональности.
+- Для корректного изменения terraform манифестов ознакомьтесь с [документацией](https://yandex.cloud/ru/docs/compute/concepts/performance-levels) Yandex Cloud terraform provider
 

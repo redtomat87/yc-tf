@@ -43,6 +43,8 @@ files_to_copy:
     dest: /opt/compose/grafana/dashboards/node_exporter/node_exporter.json
   - src: grafana/dashboards/angie/20719_rev1.json
     dest: /opt/compose/grafana/dashboards/angie/angie.json
+  - src: grafana/dashboards/cAdvisor
+    dest: /opt/compose/grafana/dashboards/cAdvisor/14282_rev1.json
 
 templates_to_render:
   - src: grafana/dashboards/dashboards.yml.j2

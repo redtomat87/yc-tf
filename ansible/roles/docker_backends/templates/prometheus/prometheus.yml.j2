@@ -28,3 +28,8 @@ scrape_configs:
     metrics_path: "/p8s"
     static_configs:
       - targets: ['{{ sites.angie.url }}']
+
+  - job_name: cadvisor
+    static_configs:
+    - targets:
+      - {{ ansible_default_ipv4.address }}:8085

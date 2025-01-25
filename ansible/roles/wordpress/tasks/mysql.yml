@@ -1,3 +1,8 @@
+- name: Gather facts for MySQL tasks
+  ansible.builtin.setup:
+  tags:
+    - mysqld_exporter
+
 - name: Installing MySQL
   notify: Restart MySQL
   block:
@@ -116,3 +121,85 @@
       loop:
         - { option: 'bind-address' }
         - { option: 'mysqlx-bind-address' }
+
+- name: Installing mysql prometheus exporter
+  tags: mysqld_exporter
+  block:
+    - name: Create mysqld_exporter system user
+      ansible.builtin.user:
+        name: "{{ mysql.mysqld_exporter.service_user }}"
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Create mysqld_exporter configuration directory
+      ansible.builtin.file:
+        path: /etc/mysqld_exporter
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create mysqld_exporter configuration file
+      ansible.builtin.template:
+        src: mysql-exporter/mysqld_exporter.cnf.j2
+        dest: /etc/mysqld_exporter/mysqld_exporter.cnf
+        owner: root
+        group: mysqld_exporter
+        mode: '0640'
+
+    - name: Create systemd service file for mysqld_exporter
+      ansible.builtin.template:
+        src: mysql-exporter/mysqld_exporter.service.j2
+        dest: /etc/systemd/system/mysqld_exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Download mysqld_exporter
+      ansible.builtin.get_url:
+        url: >- 
+          https://github.com/prometheus/mysqld_exporter/releases/download/v{{ mysql.mysqld_exporter.version }}/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64.tar.gz
+        dest: "/tmp/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64.tar.gz"
+        mode: '0644'
+
+    - name: Extract mysqld_exporter
+      ansible.builtin.unarchive:
+        src: "/tmp/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: true
+
+    - name: Move mysqld_exporter binary to /usr/local/bin
+      ansible.builtin.copy:
+        src: "/tmp/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64/mysqld_exporter"
+        dest: /usr/local/bin/mysqld_exporter
+        owner: root
+        group: root
+        mode: '0755'
+        remote_src: true
+
+    - name: Create mysqld_exporter MySQL user
+      community.mysql.mysql_user:
+        name: "{{ mysql.mysqld_exporter.user }}"
+        host: "%"
+        password: "{{ mysql.mysqld_exporter.password }}"
+        priv: '*.*:PROCESS,REPLICATION CLIENT,SELECT'
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_user: root
+        login_password: "{{ mysql.root_password }}"
+        state: present
+
+    - name: Restart and enable mysqld_exporter service
+      ansible.builtin.systemd:
+        name: mysqld_exporter
+        state: restarted
+        enabled: true
+        daemon_reload: true
+
+    - name: Clean up temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/tmp/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64.tar.gz"
+        - "/tmp/mysqld_exporter-{{ mysql.mysqld_exporter.version }}.linux-amd64"

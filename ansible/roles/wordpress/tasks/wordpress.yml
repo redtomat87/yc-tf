@@ -56,15 +56,6 @@
         mode: '0644'
       notify: Restart MySQL
 
-    # - name: Set correct permissions for WordPress files
-    #   become: true
-    #   ansible.builtin.file:
-    #     path: /var/www/wordpress
-    #     owner: www-data
-    #     group: www-data
-    #     recurse: true
-    #     state: directory
-
     - name: Cleanup temporary wordpress archive
       become: true
       ansible.builtin.file:

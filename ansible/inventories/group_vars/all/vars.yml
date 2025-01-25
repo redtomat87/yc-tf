@@ -32,6 +32,8 @@ directories:
   - /opt/compose/grafana/dashboards/keycloak
   - /opt/compose/grafana/dashboards/node_exporter
   - /opt/compose/grafana/dashboards/angie
+  - /opt/compose/grafana/dashboards/cAdvisor
+  - /opt/compose/grafana/dashboards/mysql
   - /opt/compose/grafana/datasources
   - /opt/compose/keycloak
   - /opt/compose/prometheus
@@ -43,6 +45,10 @@ files_to_copy:
     dest: /opt/compose/grafana/dashboards/node_exporter/node_exporter.json
   - src: grafana/dashboards/angie/20719_rev1.json
     dest: /opt/compose/grafana/dashboards/angie/angie.json
+  - src: grafana/dashboards/cAdvisor/19792_rev6.json
+    dest: /opt/compose/grafana/dashboards/cAdvisor/cAdvisor.json
+  - src: grafana/dashboards/mysql/14057_rev1.json
+    dest: /opt/compose/grafana/dashboards/mysql/mysql_exporter.json
 
 templates_to_render:
   - src: grafana/dashboards/dashboards.yml.j2

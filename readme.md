@@ -4,7 +4,7 @@
 ## Общая информация
 Проект предназначен для автоматизированного развертывания инфраструктуры в Yandex Cloud с использованием Terraform и программных компонентов c использованием Ansible. Работоспособность плейбуков Ansible протестирована на Ubuntu 24.04
 
-Для работы с Yandex Cloud рекомендуется установить утилиту `yc` по [инструкции Yandex](https://yandex.cloud/ru/docs/tutorials/infrastructure-management/terraform-quickstart).
+Для работы с Yandex Cloud рекомендуется установить утилиту `yc` по [инструкции Yandex](https://yandex.cloud/ru/docs/cli/operations/install-cli).
 
 
 ## Настройка Terraform

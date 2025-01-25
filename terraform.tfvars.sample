@@ -47,8 +47,8 @@ vm = [
     nat                  = true
     # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
     boot_disk_auto_delete = true
-    # Список DNS-записей для данной ВМ.
-    dns_records          = ["angie.redtomat.ru", "angie-backend.redtomat.ru"]
+    # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
+    dns_records          = ["angie", "angie-backend"]
     # Имя сети для ВМ
     network_name         = "my-network"
     # Имя подсети для ВМ
@@ -84,8 +84,8 @@ vm = [
     nat                  = true
     # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
     boot_disk_auto_delete = true
-    # Список DNS-записей для данной ВМ.
-    dns_records          = ["example.redtomat.ru", "example-backend.redtomat.ru"]
+    # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
+    dns_records          = ["example", "example-backend"]
     # Имя сети для ВМ
     network_name         = "example-network"
     # Имя подсети для ВМ

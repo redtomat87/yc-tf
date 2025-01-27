@@ -32,9 +32,6 @@ module "dns" {
 }
 
 module "ansible_inventory" {
-  source = "./tf_modules/ansible_inventory"
-
+  source       = "./tf_modules/ansible_inventory"
   vm_instances = module.compute_instance.vm_instances
 }
-
-

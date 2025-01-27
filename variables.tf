@@ -28,8 +28,7 @@ variable "subnet_name" {
 }
 
 variable "common_labels" {
-  type      = map(string)
-  sensitive = true
+  type = map(string)
 }
 
 variable "vm" {

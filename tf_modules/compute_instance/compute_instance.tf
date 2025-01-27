@@ -43,7 +43,8 @@ resource "yandex_compute_disk" "boot-disk" {
 
 output "vm_instances" {
   value = [for idx, instance in yandex_compute_instance.vm : {
-    name = instance.name
+    name   = instance.name
+    labels = instance.labels
     network_interface = [{
       nat_ip_address = instance.network_interface.0.nat_ip_address
     }]

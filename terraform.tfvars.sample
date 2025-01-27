@@ -11,8 +11,9 @@ ssh_open_key_file = "~/.ssh/id_rsa.pub"
 # Общие метки, которые будут применены ко всем ресурсам (виртуальным машинам, дискам и т.д.).
 # Используются для организации и фильтрации ресурсов в Yandex Cloud.
 common_labels = {
-  "project"  = "pet",
+  "project"    = "pet",
   "user_email" = "mr_tomat_at_mail.ru"
+  "managed_by" = "terraform"
 }
 
 # Конфигурация виртуальных машин (Yandex Compute Cloud)

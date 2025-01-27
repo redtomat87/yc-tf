@@ -10,7 +10,6 @@ module "network" {
   source               = "./tf_modules/network"
   zone_of_availability = var.zone_of_availability
   vm                   = local.vm_with_labels
-
 }
 
 module "compute_instance" {

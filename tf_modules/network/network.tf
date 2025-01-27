@@ -1,20 +1,35 @@
-resource "yandex_vpc_network" "vm-network" {
-  for_each = { for idx, vm in var.vm : idx => vm }
+locals {
+  unique_networks = distinct([
+    for vm in var.vm : "${vm.network_name}-${vm.subnet_name}"
+  ])
 
-  name   = each.value.network_name
-  labels = each.value.labels
+  grouped_vms = {
+    for key in local.unique_networks : key => [
+      for vm in var.vm : vm if "${vm.network_name}-${vm.subnet_name}" == key
+    ]
+  }
+}
+
+resource "yandex_vpc_network" "vm-network" {
+  for_each = { for idx, key in local.unique_networks : idx => key }
+
+  name   = split("-", each.value)[0]
+  labels = lookup(local.grouped_vms[each.value][0], "labels", {})
 }
 
 resource "yandex_vpc_subnet" "vm-subnet" {
-  for_each = { for idx, vm in var.vm : idx => vm }
+  for_each = { for idx, key in local.unique_networks : idx => key }
 
-  name           = each.value.subnet_name
+  name           = split("-", each.value)[1]
   zone           = var.zone_of_availability
   network_id     = yandex_vpc_network.vm-network[each.key].id
-  v4_cidr_blocks = each.value.v4_cidr_blocks
-  labels         = each.value.labels
+  v4_cidr_blocks = lookup(local.grouped_vms[each.value][0], "v4_cidr_blocks", [])
+  labels         = lookup(local.grouped_vms[each.value][0], "labels", {})
 }
 
 output "subnet_ids" {
-  value = { for idx, vm in var.vm : idx => yandex_vpc_subnet.vm-subnet[idx].id }
+  value = {
+    for idx, key in local.unique_networks :
+    key => yandex_vpc_subnet.vm-subnet[idx].id
+  }
 }

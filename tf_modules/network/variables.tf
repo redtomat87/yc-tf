@@ -1,5 +1,6 @@
 variable "vm" {
   type = list(object({
+    name           = string
     network_name   = string
     subnet_name    = string
     v4_cidr_blocks = list(string)

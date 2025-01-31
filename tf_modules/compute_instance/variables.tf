@@ -11,6 +11,8 @@ variable "vm" {
     nat                   = bool
     boot_disk_auto_delete = bool
     labels                = map(string)
+    network_name          = string
+    subnet_name           = string
   }))
 }
 

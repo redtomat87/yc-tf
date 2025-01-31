@@ -17,7 +17,7 @@ resource "yandex_compute_instance" "vm" {
   }
 
   network_interface {
-    subnet_id = var.subnet_ids[each.key]
+    subnet_id = var.subnet_ids["${each.value.network_name}-${each.value.subnet_name}"]
     nat       = each.value.nat
   }
 
@@ -43,7 +43,8 @@ resource "yandex_compute_disk" "boot-disk" {
 
 output "vm_instances" {
   value = [for idx, instance in yandex_compute_instance.vm : {
-    name = instance.name
+    name   = instance.name
+    labels = instance.labels
     network_interface = [{
       nat_ip_address = instance.network_interface.0.nat_ip_address
     }]
@@ -68,3 +69,4 @@ output "external_ip_addresses_with_names" {
     if instance.network_interface.0.nat_ip_address != null
   }
 }
+

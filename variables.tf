@@ -12,24 +12,21 @@ variable "v4_cidr_blocks" {
   default = ["192.168.10.0/24"]
 }
 
-variable "network_name" {
-  type    = string
-  default = "default"
-}
-
 variable "dns_zone" {
   type    = string
   default = ""
 }
 
-variable "subnet_name" {
-  type    = string
-  default = "my-subnet"
+variable "common_labels" {
+  type = map(string)
 }
 
-variable "common_labels" {
-  type      = map(string)
-  sensitive = true
+variable "networks" {
+  type = map(object({
+    subnets = map(object({
+      cidr_block = string
+    }))
+  }))
 }
 
 variable "vm" {
@@ -47,7 +44,7 @@ variable "vm" {
     dns_records           = list(string)
     network_name          = string
     subnet_name           = string
-    v4_cidr_blocks        = list(string)
     labels                = map(string)
   }))
 }
+

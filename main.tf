@@ -9,7 +9,8 @@ locals {
 module "network" {
   source               = "./tf_modules/network"
   zone_of_availability = var.zone_of_availability
-  vm                   = local.vm_with_labels
+  networks             = var.networks
+  common_labels        = var.common_labels
 }
 
 module "compute_instance" {
@@ -34,3 +35,4 @@ module "ansible_inventory" {
   source       = "./tf_modules/ansible_inventory"
   vm_instances = module.compute_instance.vm_instances
 }
+

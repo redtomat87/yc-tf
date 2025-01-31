@@ -69,3 +69,4 @@ output "external_ip_addresses_with_names" {
     if instance.network_interface.0.nat_ip_address != null
   }
 }
+

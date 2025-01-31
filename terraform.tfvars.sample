@@ -12,8 +12,34 @@ ssh_open_key_file = "~/.ssh/id_rsa.pub"
 # Используются для организации и фильтрации ресурсов в Yandex Cloud.
 common_labels = {
   "project"    = "pet",
-  "user_email" = "mr_tomat_at_mail.ru"
+  "user_email" = "mymail_at_mail_ru",
   "managed_by" = "terraform"
+}
+
+# Конфигурация сетей и подсетей
+
+# Список сетей и их подсетей. Каждая сеть может иметь несколько подсетей.
+networks = {
+  angie-network = {
+    subnets = {
+      angie-subnet = {
+        cidr_block = "192.168.10.0/24"
+      }
+      angie-subnet-1 = {
+        cidr_block = "192.168.20.0/24"
+      }
+    }
+  }
+  angie-network1 = {
+    subnets = {
+      angie-subnet2 = {
+        cidr_block = "192.168.40.0/24"
+      }
+      angie-subnet-3 = {
+        cidr_block = "192.168.50.0/24"
+      }
+    }
+  }
 }
 
 # Конфигурация виртуальных машин (Yandex Compute Cloud)
@@ -23,7 +49,42 @@ vm = [
   {
     # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
     name = "angie"
-    # Метки для данной конкретной виртуальной машины. Дополняют уникальныее метки ресурса к общим меткам common_labels.
+    # Метки для данной конкретной виртуальной машины. Дополняют общие метки ресурса к общим меткам common_labels.
+    labels = {
+      "environment" = "production"
+      "role"        = "webserver-2"
+    }
+    ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
+    ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
+    # Количество ядер CPU.
+    cores                 = 2
+    # Объем оперативной памяти в GB.
+    memory                = 4
+    # Гарантированная доля vCPU (от 5 до 100%).
+    core_fraction         = 20
+    ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
+    boot_disk_type        = "network-hdd"
+    # Размер загрузочного диска в GB.
+    boot_disk_size        = 15
+    # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
+    boot_disk_image       = "fd817upt6ubkr107osh7"
+    # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
+    preemptible           = true
+    # Включить ли NAT для виртуальной машины.
+    nat                   = true
+    # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
+    boot_disk_auto_delete = true
+    # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
+    dns_records           = ["angie", "angie-backend", "daily", "static", "auth", "grafana"]
+    # Имя сети для ВМ
+    network_name          = "angie-network"
+    # Имя подсети для ВМ
+    subnet_name           = "angie-subnet"
+  },
+  {
+    # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
+    name = "angie-second"
+    # Метки для данной конкретной виртуальной машины. Дополняют общие метки ресурса к общим меткам common_labels.
     labels = {
       "environment" = "production"
       "role"        = "webserver"
@@ -31,73 +92,104 @@ vm = [
     ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
     ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
     # Количество ядер CPU.
-    cores                = 2
+    cores                 = 2
     # Объем оперативной памяти в GB.
-    memory               = 4
+    memory                = 4
     # Гарантированная доля vCPU (от 5 до 100%).
-    core_fraction        = 20
+    core_fraction         = 20
     ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
-    boot_disk_type       = "network-hdd"
+    boot_disk_type        = "network-hdd"
     # Размер загрузочного диска в GB.
-    boot_disk_size       = 15
+    boot_disk_size        = 15
     # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
-    boot_disk_image      = "fd8m5hqeuhbtbhltuab4" # Ubuntu 24.04 LTS
+    boot_disk_image       = "fd817upt6ubkr107osh7"
     # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
-    preemptible          = true
+    preemptible           = true
     # Включить ли NAT для виртуальной машины.
-    nat                  = true
+    nat                   = true
     # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
     boot_disk_auto_delete = true
     # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
-    dns_records          = ["angie", "angie-backend"]
+    dns_records           = ["angie-test", "angie-backend-1"]
     # Имя сети для ВМ
-    network_name         = "my-network"
+    network_name          = "angie-network"
     # Имя подсети для ВМ
-    subnet_name          = "my-subnet"
-    # CIDR блок для подсети ВМ
-    v4_cidr_blocks        = ["192.168.10.0/24"]
+    subnet_name           = "angie-subnet"
   },
-    {
+  {
     # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
     name = "example"
-    # Метки для данной конкретной виртуальной машины. Перезаписывают общие метки common_labels.
+    # Метки для данной конкретной виртуальной машины. Дополняют общие метки ресурса к общим меткам common_labels.
     labels = {
-      "environment" = "production"
-      "role"        = "example_webserver"
+      "environment" = "preproduction"
+      "role"        = "docker_cluster"
     }
     ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
     ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
     # Количество ядер CPU.
-    cores                = 2
+    cores                 = 2
     # Объем оперативной памяти в GB.
-    memory               = 4
+    memory                = 2
     # Гарантированная доля vCPU (от 5 до 100%).
-    core_fraction        = 20
+    core_fraction         = 20
     ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
-    boot_disk_type       = "network-hdd"
+    boot_disk_type        = "network-ssd"
     # Размер загрузочного диска в GB.
-    boot_disk_size       = 15
+    boot_disk_size        = 20
     # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
-    boot_disk_image      = "fd8m5hqeuhbtbhltuab4" # Ubuntu 24.04 LTS
+    boot_disk_image       = "fd817upt6ubkr107osh7"
     # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
-    preemptible          = true
-    # Включить ли NAT для виртуальной машины (для доступа извне).
-    nat                  = true
+    preemptible           = true
+    # Включить ли NAT для виртуальной машины.
+    nat                   = true
     # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
     boot_disk_auto_delete = true
     # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
-    dns_records          = ["example", "example-backend"]
+    dns_records           = ["example", "example-backend"]
     # Имя сети для ВМ
-    network_name         = "example-network"
+    network_name          = "angie-network"
     # Имя подсети для ВМ
-    subnet_name          = "example-subnet"
-        # CIDR блок для подсети ВМ
-    v4_cidr_blocks        = ["192.168.20.0/24"]
+    subnet_name           = "angie-subnet-1"
+  },
+  {
+    # Имя виртуальной машины. Должно быть уникальным в пределах проекта.
+    name = "example1"
+    # Метки для данной конкретной виртуальной машины. Дополняют общие метки ресурса к общим меткам common_labels.
+    labels = {
+      "environment" = "preproduction"
+      "role"        = "docker_cluster"
+    }
+    ## Для корректного указания сайзинга ВМ пожалуйста ознакомьтесь с доступными конфигурациями Yandex Cloud
+    ## https://yandex.cloud/ru/docs/compute/concepts/performance-levels
+    # Количество ядер CPU.
+    cores                 = 2
+    # Объем оперативной памяти в GB.
+    memory                = 2
+    # Гарантированная доля vCPU (от 5 до 100%).
+    core_fraction         = 20
+    ## [Тип](https://yandex.cloud/ru/docs/compute/concepts/disk) загрузочного диска.
+    boot_disk_type        = "network-ssd"
+    # Размер загрузочного диска в GB.
+    boot_disk_size        = 20
+    # ID [образа](https://yandex.cloud/ru/docs/compute/operations/images-with-pre-installed-software/get-list#cli_1) загрузочного диска.
+    boot_disk_image       = "fd817upt6ubkr107osh7"
+    # Является ли виртуальная машина [прерываемой](https://yandex.cloud/ru/docs/compute/concepts/preemptible-vm).
+    preemptible           = true
+    # Включить ли NAT для виртуальной машины.
+    nat                   = true
+    # Удалять ли загрузочный диск автоматически при удалении виртуальной машины.
+    boot_disk_auto_delete = true
+    # Список DNS-записей для данной ВМ (если укажем, например, example получится доменное имя третьего уровня, тоесть example.${dns_zone} в примере получиться angie.redtomat.ru).
+    dns_records           = ["example1", "example-backend1"]
+    # Имя сети для ВМ
+    network_name          = "angie-network"
+    # Имя подсети для ВМ
+    subnet_name           = "angie-subnet-1"
   }
 ]
 
 # Конфигурация DNS
-# Для корректной конфигурации DNS требуется делегирование вашего домена на Cloud DNS серверы yandex см. [дкументацию](https://yandex.cloud/ru/docs/troubleshooting/dns/how-to/delegate-public-zone)
+# Для корректной конфигурации DNS требуется делегирование вашего домена на Cloud DNS серверы yandex см. [документацию](https://yandex.cloud/ru/docs/troubleshooting/dns/how-to/delegate-public-zone)
 
 # Зона доступности в Yandex Cloud.
 zone_of_availability = "ru-central1-a"

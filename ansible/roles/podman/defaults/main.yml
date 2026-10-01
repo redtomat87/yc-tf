@@ -1,0 +1,37 @@
+---
+# Podman 6 для Ubuntu 26.04 есть только в OBS home:alvistack (ссылка с podman.io);
+# в штатном репозитории 26.04 — 5.7.
+podman_repo_uri: "https://downloadcontent.opensuse.org/repositories/home:/alvistack/xUbuntu_{{ ansible_facts.distribution_version }}/"
+podman_repo_key_fpr: 789CFFDE0295B8A1F4E5690C4BECC97550D0B1FD
+
+# "latest" — ставить и обновлять до последней версии из репозитория,
+# иначе конкретная версия, например "6.1.3".
+podman_version: latest
+
+# Пакеты, которым разрешено приходить из OBS: podman и его зависимости из того же
+# репозитория. Остальные пакеты репозитория запрещены pin'ом, иначе с epoch 100:
+# они перекрыли бы любые одноимённые пакеты Ubuntu.
+# cri-o-runc не включён: oci-runtime закрывает crun.
+podman_repo_packages:
+  - buildah
+  - catatonit
+  - conmon
+  - containernetworking
+  - containernetworking-plugins
+  - containers-common
+  - containers-storage
+  - crun
+  - passt
+  - podman
+  - podman-aardvark-dns
+  - podman-netavark
+  - skopeo
+
+podman_packages:
+  - podman
+  - crun
+  - passt
+
+# Диапазон из man podman-run (--userns=auto): выше любых обычных UID и диапазонов пользователей.
+podman_userns_auto_start: 2147483647
+podman_userns_auto_size: 2147483648

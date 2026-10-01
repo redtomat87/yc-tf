@@ -1,0 +1,8 @@
+---
+- name: Install Podman
+  ansible.builtin.import_tasks: install.yml
+  tags: [install, podman_install]
+
+- name: Configure Podman
+  ansible.builtin.import_tasks: configure.yml
+  tags: [config, podman_config]

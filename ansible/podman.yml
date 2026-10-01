@@ -1,0 +1,7 @@
+---
+- name: Podman
+  hosts: apps
+  become: true
+  roles:
+    - role: podman
+      tags: [podman]

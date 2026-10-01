@@ -1,0 +1,64 @@
+---
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install OBS repository key
+  ansible.builtin.copy:
+    src: alvistack-release.asc
+    dest: /etc/apt/keyrings/alvistack.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Read repository key fingerprint
+  ansible.builtin.command: gpg --show-keys --with-colons /etc/apt/keyrings/alvistack.asc
+  register: podman_key_fpr
+  changed_when: false
+
+- name: Repository key fingerprint must match
+  ansible.builtin.assert:
+    that: podman_repo_key_fpr in podman_key_fpr.stdout
+    fail_msg: >-
+      Ключ в roles/podman/files не совпадает с {{ podman_repo_key_fpr }}: ключ подменён или
+      обновлён. Сверьте с {{ podman_repo_uri }}Release.key
+
+# Pin ставится раньше репозитория: иначе первый же apt update увидит весь OBS без ограничений.
+- name: Restrict the OBS repository to Podman packages
+  ansible.builtin.template:
+    src: apt-preferences.j2
+    dest: /etc/apt/preferences.d/alvistack-podman
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Add OBS repository
+  ansible.builtin.deb822_repository:
+    name: alvistack-podman
+    types: [deb]
+    uris: "{{ podman_repo_uri }}"
+    # Плоский репозиторий OBS: suite "/" без components.
+    suites: ["/"]
+    signed_by: /etc/apt/keyrings/alvistack.asc
+    state: present
+  register: podman_repo
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    lock_timeout: 600
+  when: podman_repo is changed
+
+- name: Install Podman packages
+  ansible.builtin.apt:
+    name: >-
+      {{ podman_packages if podman_version == 'latest'
+         else podman_packages | map('regex_replace', '^podman$', 'podman=100:' ~ podman_version ~ '-*') | list }}
+    state: "{{ 'latest' if podman_version == 'latest' else 'present' }}"
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 600

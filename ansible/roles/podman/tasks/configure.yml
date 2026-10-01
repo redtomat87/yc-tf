@@ -1,0 +1,22 @@
+---
+# UserNS=auto у rootful Podman выделяет каждому pod'у свой диапазон UID/GID из записей
+# пользователя containers: root в контейнере не равен root на хосте.
+- name: Reserve subordinate IDs for UserNS=auto
+  ansible.builtin.lineinfile:
+    path: "{{ item }}"
+    regexp: "^containers:"
+    line: "containers:{{ podman_userns_auto_start }}:{{ podman_userns_auto_size }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - /etc/subuid
+    - /etc/subgid
+
+# API нужен podman-exporter'у (метрики контейнеров).
+- name: Enable Podman API socket
+  ansible.builtin.systemd_service:
+    name: podman.socket
+    enabled: true
+    state: started

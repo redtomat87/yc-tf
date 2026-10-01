@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Из OBS home:alvistack берём только Podman и его зависимости, остальное запрещено.
+# Запись для конкретных пакетов идёт первой: apt берёт первую подходящую.
+
+Package: {{ podman_repo_packages | join(' ') }}
+Pin: origin downloadcontent.opensuse.org
+Pin-Priority: 600
+
+Package: *
+Pin: origin downloadcontent.opensuse.org
+Pin-Priority: -1

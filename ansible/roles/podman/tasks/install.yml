@@ -47,7 +47,7 @@
     state: present
   register: podman_repo
 
-- name: Update apt cache
+- name: Update apt cache  # noqa: no-handler -- индекс нужен следующей задаче, а не в конце play
   ansible.builtin.apt:
     update_cache: true
     lock_timeout: 600

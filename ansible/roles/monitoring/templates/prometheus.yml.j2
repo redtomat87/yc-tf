@@ -1,34 +1,62 @@
-global:
-  scrape_interval: 15s
-  scrape_timeout: 10s
-  evaluation_interval: 15s
-
-# Pod monitoring в сети хоста: все экспортеры доступны на 127.0.0.1.
-scrape_configs:
-  - job_name: prometheus
-    metrics_path: /prometheus/metrics
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.prometheus }}"]
-
-  - job_name: node-exporter
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.node_exporter }}"]
-
-  - job_name: angie
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.angie_status }}"]
-
-  - job_name: keycloak
-    static_configs:
-      - targets:
-{% for port in app_ports.keycloak_management %}
-          - "127.0.0.1:{{ port }}"
-{% endfor %}
-
-  - job_name: mysqld-exporter
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.mysqld_exporter }}"]
-
-  - job_name: podman
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.podman_exporter }}"]
+# {{ ansible_managed }}
+# Prometheus в сети хоста: экспортеры (node, Angie, Keycloak, MySQL, Podman) слушают
+# только 127.0.0.1, из bridge-сети их не видно. Сам Prometheus тоже слушает 127.0.0.1,
+# снаружи — через Angie (/prometheus под basic auth).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: {{ lookup('ansible.builtin.template', 'prometheus-config.yml.j2') | to_json }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prometheus
+  labels:
+    app: monitoring
+    component: prometheus
+spec:
+  hostNetwork: true
+  containers:
+    - name: prometheus
+      image: {{ monitoring_prometheus_image }}
+      args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time={{ monitoring_prometheus_retention }}
+        - --web.listen-address=127.0.0.1:{{ app_ports.prometheus }}
+        - --web.external-url={{ monitoring_grafana_url }}/prometheus
+        - --web.route-prefix=/prometheus
+      # В образе только wget, а httpGet-пробу Podman выполняет через curl.
+      livenessProbe:
+        exec:
+          command: [wget, -q, -O, /dev/null, "http://127.0.0.1:{{ app_ports.prometheus }}/prometheus/-/ready"]
+        initialDelaySeconds: 10
+        periodSeconds: 15
+      resources:
+        limits:
+          memory: {{ monitoring_prometheus_memory_limit }}
+      volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+          readOnly: true
+        - name: data
+          mountPath: /prometheus
+  volumes:
+    - name: config
+      configMap:
+        name: prometheus-config
+    - name: data
+      persistentVolumeClaim:
+        claimName: prometheus-data

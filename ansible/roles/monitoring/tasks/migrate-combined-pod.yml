@@ -1,0 +1,33 @@
+---
+# Раньше Prometheus и Grafana жили в одном pod'е monitoring (слот UserNS 5). Теперь у
+# Prometheus свой pod со слотом 5, а у Grafana — слот 10, и её прежний том grafana-data
+# принадлежит чужому диапазону UID. В нём только sqlite Grafana: пользователи из
+# Keycloak заводятся заново при входе, дашборды и источник данных — из provisioning.
+- name: Check for the combined monitoring unit
+  ansible.builtin.stat:
+    path: /etc/containers/systemd/monitoring.kube
+  register: monitoring_combined_unit
+
+- name: Migrate from the combined pod
+  when: monitoring_combined_unit.stat.exists
+  block:
+    - name: Stop the combined monitoring pod
+      ansible.builtin.systemd_service:
+        name: monitoring.service
+        state: stopped
+
+    - name: Remove the combined monitoring unit and manifest
+      ansible.builtin.file:
+        path: "/etc/containers/systemd/{{ item }}"
+        state: absent
+      loop: [monitoring.kube, monitoring.yml]
+
+    - name: Reload systemd after removing the unit
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Remove Grafana volume owned by the old UID range
+      ansible.builtin.command: podman volume rm --force grafana-data
+      register: monitoring_grafana_volume_rm
+      changed_when: monitoring_grafana_volume_rm.rc == 0
+      failed_when: false

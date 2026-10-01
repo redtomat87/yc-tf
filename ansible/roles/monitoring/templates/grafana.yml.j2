@@ -1,22 +1,15 @@
 # {{ ansible_managed }}
-# Prometheus и Grafana в сети хоста: экспортеры (node, Angie, Keycloak, MySQL, Podman)
-# слушают только 127.0.0.1, из bridge-сети их не видно. Сами Prometheus и Grafana тоже
-# слушают 127.0.0.1, снаружи — через Angie.
+# Grafana в сети хоста: Prometheus слушает 127.0.0.1, а к Keycloak (token, userinfo)
+# Grafana ходит через локальный Angie по записи в /etc/hosts хоста (задача роли):
+# с hostNetwork hostAliases не применяются ни в Podman, ни в Kubernetes.
 apiVersion: v1
 kind: Secret
 metadata:
-  name: monitoring-secrets
+  name: grafana-secrets
 type: Opaque
 data:
-  grafana-admin-password: {{ monitoring_grafana_admin_password | b64encode }}
+  admin-password: {{ monitoring_grafana_admin_password | b64encode }}
   oauth-client-secret: {{ monitoring_oauth_client_secret | b64encode }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: prometheus-config
-data:
-  prometheus.yml: {{ lookup('ansible.builtin.template', 'prometheus.yml.j2') | to_json }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -56,16 +49,6 @@ data:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: prometheus-data
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests:
-      storage: 5Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
   name: grafana-data
 spec:
   accessModes: [ReadWriteOnce]
@@ -76,40 +59,13 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: monitoring
+  name: grafana
   labels:
     app: monitoring
+    component: grafana
 spec:
-  # Вызовы Grafana к Keycloak (token, userinfo) идут в локальный Angie через запись
-  # в /etc/hosts хоста (задача роли): с hostNetwork hostAliases не применяются
-  # ни в Podman, ни в Kubernetes.
   hostNetwork: true
   containers:
-    - name: prometheus
-      image: {{ monitoring_prometheus_image }}
-      args:
-        - --config.file=/etc/prometheus/prometheus.yml
-        - --storage.tsdb.path=/prometheus
-        - --storage.tsdb.retention.time={{ monitoring_prometheus_retention }}
-        - --web.listen-address=127.0.0.1:{{ app_ports.prometheus }}
-        - --web.external-url={{ monitoring_grafana_url }}/prometheus
-        - --web.route-prefix=/prometheus
-      # В образе только wget, а httpGet-пробу Podman выполняет через curl.
-      livenessProbe:
-        exec:
-          command: [wget, -q, -O, /dev/null, "http://127.0.0.1:{{ app_ports.prometheus }}/prometheus/-/ready"]
-        initialDelaySeconds: 10
-        periodSeconds: 15
-      resources:
-        limits:
-          memory: {{ monitoring_prometheus_memory_limit }}
-      volumeMounts:
-        - name: prometheus-config
-          mountPath: /etc/prometheus
-          readOnly: true
-        - name: prometheus-data
-          mountPath: /prometheus
-
     - name: grafana
       image: {{ monitoring_grafana_image }}
       env:
@@ -126,7 +82,7 @@ spec:
         - name: GF_SECURITY_ADMIN_USER
           value: admin
         - name: GF_SECURITY_ADMIN_PASSWORD
-          valueFrom: { secretKeyRef: { name: monitoring-secrets, key: grafana-admin-password } }
+          valueFrom: { secretKeyRef: { name: grafana-secrets, key: admin-password } }
         - name: GF_ANALYTICS_REPORTING_ENABLED
           value: "false"
         # Вход только через Keycloak.
@@ -139,7 +95,7 @@ spec:
         - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
           value: grafana
         - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-          valueFrom: { secretKeyRef: { name: monitoring-secrets, key: oauth-client-secret } }
+          valueFrom: { secretKeyRef: { name: grafana-secrets, key: oauth-client-secret } }
         - name: GF_AUTH_GENERIC_OAUTH_SCOPES
           value: openid email profile
         - name: GF_AUTH_GENERIC_OAUTH_USE_PKCE
@@ -177,13 +133,13 @@ spec:
         limits:
           memory: {{ monitoring_grafana_memory_limit }}
       volumeMounts:
-        - name: grafana-data
+        - name: data
           mountPath: /var/lib/grafana
-        - name: grafana-provisioning
+        - name: provisioning
           mountPath: /etc/grafana/provisioning/datasources/datasources.yml
           subPath: datasources.yml
           readOnly: true
-        - name: grafana-provisioning
+        - name: provisioning
           mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
           subPath: dashboards.yml
           readOnly: true
@@ -192,18 +148,11 @@ spec:
           mountPath: /etc/grafana/dashboards/{{ dashboard }}
           readOnly: true
 {% endfor %}
-
   volumes:
-    - name: prometheus-config
-      configMap:
-        name: prometheus-config
-    - name: prometheus-data
-      persistentVolumeClaim:
-        claimName: prometheus-data
-    - name: grafana-data
+    - name: data
       persistentVolumeClaim:
         claimName: grafana-data
-    - name: grafana-provisioning
+    - name: provisioning
       configMap:
         name: grafana-provisioning
 {% for dashboard in monitoring_dashboards %}

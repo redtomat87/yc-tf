@@ -26,11 +26,13 @@ podman_userns_slots:
   keycloak-postgres: 2
   keycloak-1: 3
   keycloak-2: 4
-  monitoring: 5
+  # 5 — бывший общий pod monitoring, его тома остались за Prometheus
+  prometheus: 5
   test-backend-1: 6
   test-backend-2: 7
   test-backend-3: 8
   test-backend-4: 9
+  grafana: 10
 
 # --- Angie ---------------------------------------------------------
 angie_vhosts:

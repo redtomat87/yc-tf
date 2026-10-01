@@ -20,6 +20,26 @@
         podman_kube_userns: host
         podman_kube_manifest_changed: "{{ monitoring_exporter_manifest is changed }}"
 
+    - name: Remove the former combined monitoring pod
+      ansible.builtin.include_tasks: migrate-combined-pod.yml
+
+    - name: Render Prometheus manifest
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: /etc/containers/systemd/prometheus.yml
+        owner: root
+        group: root
+        mode: "0644"
+      register: monitoring_prometheus_manifest
+
+    - name: Run Prometheus pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: prometheus
+        podman_kube_description: Prometheus
+        podman_kube_manifest_changed: "{{ monitoring_prometheus_manifest is changed }}"
+
     # Grafana в сети хоста ходит к Keycloak за токеном. Без этой записи запрос шёл бы
     # на публичный адрес ВМ, а на hairpin через NAT облака полагаться нельзя.
     - name: Resolve Keycloak host to the local Angie
@@ -32,19 +52,20 @@
         mode: "0644"
 
     # 0600: в манифесте Secret с паролями (base64 — не шифрование).
-    - name: Render monitoring manifest
+    - name: Render Grafana manifest
       ansible.builtin.template:
-        src: monitoring.yml.j2
-        dest: /etc/containers/systemd/monitoring.yml
+        src: grafana.yml.j2
+        dest: /etc/containers/systemd/grafana.yml
         owner: root
         group: root
         mode: "0600"
-      register: monitoring_manifest
+      register: monitoring_grafana_manifest
 
-    - name: Run monitoring pod
+    - name: Run Grafana pod
       ansible.builtin.include_role:
         name: podman_kube
       vars:
-        podman_kube_name: monitoring
-        podman_kube_description: Prometheus and Grafana
-        podman_kube_manifest_changed: "{{ monitoring_manifest is changed }}"
+        podman_kube_name: grafana
+        podman_kube_description: Grafana
+        podman_kube_requires: [prometheus.service]
+        podman_kube_manifest_changed: "{{ monitoring_grafana_manifest is changed }}"

@@ -9,7 +9,8 @@ podman_kube_manifest_changed: false
 podman_kube_description: "{{ podman_kube_name }}"
 
 # Порты публикуются здесь, а не hostPort в YAML: манифест остаётся пригодным для Kubernetes.
-# ["127.0.0.1:8090:80", ...]
+# Всегда на 127.0.0.1, а с remote: true — ещё на частном IP ВМ (потребитель на другой ВМ).
+# [{port: 8090, container_port: 80, remote: "{{ remote_consumers.web }}"}, ...]
 podman_kube_publish: []
 # Сеть Quadlet (<name>.network) или "host"; пусто — сеть podman по умолчанию.
 podman_kube_network: ""

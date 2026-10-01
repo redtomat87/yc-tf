@@ -14,8 +14,11 @@ Yaml={{ podman_kube_name }}.yml
 {% if podman_kube_network %}
 Network={{ podman_kube_network }}
 {% endif %}
-{% for port in podman_kube_publish %}
-PublishPort={{ port }}
+{% for p in podman_kube_publish %}
+PublishPort=127.0.0.1:{{ p.port }}:{{ p.container_port }}
+{%   if p.remote | default(false) | bool %}
+PublishPort={{ private_ip }}:{{ p.port }}:{{ p.container_port }}
+{%   endif %}
 {% endfor %}
 {% if podman_kube_userns == 'auto' %}
 {%   set host_id = podman_kube_userns_base | int + podman_kube_userns_slot | int * podman_kube_userns_size | int %}

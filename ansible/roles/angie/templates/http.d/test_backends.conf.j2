@@ -1,0 +1,24 @@
+{% import 'macros.j2' as m %}
+{% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
+#=====================================================================
+# {{ item.dest }}   {{ ansible_managed }}
+# Тестовые бэкенды для экспериментов с балансировкой (роль test_backends).
+#=====================================================================
+
+upstream test_backends {
+{% for port in app_ports.test_backends %}
+    server 127.0.0.1:{{ port }};
+{% endfor %}
+    keepalive 16;
+    zone test_backends 1m;
+}
+
+server {
+{{ m.tls_server(vhost) }}
+
+    location / {
+{{ m.basic_auth() }}
+        include /etc/angie/snippets/proxy.conf;
+        proxy_pass http://test_backends;
+    }
+}

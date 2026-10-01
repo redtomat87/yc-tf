@@ -1,0 +1,29 @@
+{% import 'macros.j2' as m %}
+{% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
+#=====================================================================
+# {{ item.dest }}   {{ ansible_managed }}
+# Веб-консоль Angie (angie-console-light) под basic auth.
+#=====================================================================
+
+server {
+{{ m.tls_server(vhost) }}
+
+    location = / {
+        return 302 /console/;
+    }
+
+    location /console/ {
+{{ m.basic_auth() }}
+        alias /usr/share/angie-console-light/html/;
+        index index.html;
+
+        location /console/api/ {
+            api /status/;
+            api_config_files off;
+        }
+    }
+
+    location / {
+        return 404;
+    }
+}

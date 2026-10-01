@@ -1,0 +1,35 @@
+{% import 'macros.j2' as m %}
+{% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
+#=====================================================================
+# {{ item.dest }}   {{ ansible_managed }}
+# Статический сайт из {{ static_site_root }} (роль static_site).
+#=====================================================================
+
+server {
+{{ m.tls_server(vhost) }}
+
+    root {{ static_site_root }};
+    index index.html;
+    charset utf-8;
+
+    limit_req  zone=perip burst={{ angie_limit_burst }} delay={{ angie_limit_delay }};
+    limit_conn addr {{ angie_limit_conn }};
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~* \.(?:css|js|woff2?|ttf|otf|eot|svg|jpe?g|png|gif|ico)$ {
+        include /etc/angie/snippets/headers.conf;
+        add_header Cache-Control "public, max-age=2592000";
+        try_files $uri =404;
+        access_log off;
+    }
+
+    # Служебные файлы (.git, .env и т. п.)
+    location ~ /\. {
+        return 404;
+    }
+
+    error_page 404 /error/index.html;
+}

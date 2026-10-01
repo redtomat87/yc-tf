@@ -1,0 +1,31 @@
+{% import 'macros.j2' as m %}
+{% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
+#=====================================================================
+# {{ item.dest }}   {{ ansible_managed }}
+# Keycloak: две реплики (роль keycloak), least_conn + sticky cookie.
+#=====================================================================
+
+upstream keycloak {
+    least_conn;
+{% for port in app_ports.keycloak %}
+    server 127.0.0.1:{{ port }};
+{% endfor %}
+    # Сессия входа живёт на одной реплике, пока кэши не разошлись по кластеру.
+    sticky cookie kc_srv max-age=3600 secure httponly;
+    keepalive 16;
+    zone keycloak 1m;
+}
+
+server {
+{{ m.tls_server(vhost) }}
+
+    # Ответы Keycloak с токенами и большими куками не помещаются в буферы по умолчанию.
+    proxy_buffer_size 16k;
+    proxy_buffers 8 16k;
+
+    # Метрики и health Keycloak отдаёт на management-порту, он сюда не проксируется.
+    location / {
+        include /etc/angie/snippets/proxy.conf;
+        proxy_pass http://keycloak;
+    }
+}

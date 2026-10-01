@@ -1,6 +1,6 @@
 ---
-# Профиль загружается сразу, а не handler'ом: запуск Angie в configure.yml должен
-# идти уже под новой версией профиля.
+# Профиль загружается сразу, а не handler'ом: запуск и reload Angie в configure.yml
+# должны идти уже под новой версией профиля.
 - name: Install AppArmor profile for Angie
   ansible.builtin.template:
     src: apparmor/usr.sbin.angie.j2
@@ -14,5 +14,19 @@
   ansible.builtin.command: apparmor_parser --replace --write-cache /etc/apparmor.d/usr.sbin.angie
   when: angie_apparmor_profile is changed
   changed_when: true
-  # Уже запущенный без профиля процесс получает его только при exec.
-  notify: Restart Angie
+
+# Профиль достаётся процессу при exec. Angie, запущенный пакетом до появления профиля,
+# остаётся unconfined, и `angie -s reload` (уже под профилем) не может послать ему сигнал.
+- name: Read AppArmor label of the running Angie master
+  ansible.builtin.shell:
+    cmd: test -s /run/angie.pid && cat "/proc/$(cat /run/angie.pid)/attr/current" || echo not-running
+  register: angie_master_label
+  changed_when: false
+
+- name: Restart Angie to run it under the profile
+  ansible.builtin.systemd_service:
+    name: angie
+    state: restarted
+  when:
+    - angie_master_label.stdout != 'not-running'
+    - not angie_master_label.stdout.startswith('angie ')

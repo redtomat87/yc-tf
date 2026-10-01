@@ -1,0 +1,55 @@
+# {{ ansible_managed }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-postgres-secrets
+type: Opaque
+data:
+  password: {{ keycloak_db_password | b64encode }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-db
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: keycloak-postgres
+  labels:
+    app: keycloak
+    component: database
+spec:
+  containers:
+    - name: postgres
+      image: {{ keycloak_postgres_image }}
+      env:
+        - name: POSTGRES_DB
+          value: {{ keycloak_db_name }}
+        - name: POSTGRES_USER
+          value: {{ keycloak_db_user }}
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: keycloak-postgres-secrets, key: password } }
+      ports:
+        - containerPort: 5432
+      livenessProbe:
+        exec:
+          command: [pg_isready, -U, {{ keycloak_db_user }}, -d, {{ keycloak_db_name }}]
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      resources:
+        limits:
+          memory: 256Mi
+      volumeMounts:
+        # С PostgreSQL 18 образ хранит данные в /var/lib/postgresql/<версия>/docker.
+        - name: data
+          mountPath: /var/lib/postgresql
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: keycloak-db

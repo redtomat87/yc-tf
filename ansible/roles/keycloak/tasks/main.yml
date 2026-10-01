@@ -1,0 +1,61 @@
+---
+- name: Deploy Keycloak
+  tags: [config, keycloak_config]
+  block:
+    - name: Render Keycloak network
+      ansible.builtin.template:
+        src: keycloak.network.j2
+        dest: /etc/containers/systemd/keycloak.network
+        owner: root
+        group: root
+        mode: "0644"
+      register: keycloak_network
+
+    # 0600: в манифестах Secret с паролями (base64 — не шифрование).
+    - name: Render PostgreSQL manifest
+      ansible.builtin.template:
+        src: keycloak-postgres.yml.j2
+        dest: /etc/containers/systemd/keycloak-postgres.yml
+        owner: root
+        group: root
+        mode: "0600"
+      register: keycloak_postgres_manifest
+
+    - name: Run PostgreSQL pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: keycloak-postgres
+        podman_kube_description: PostgreSQL for Keycloak
+        podman_kube_network: keycloak.network
+        podman_kube_manifest_changed: "{{ keycloak_postgres_manifest is changed or keycloak_network is changed }}"
+
+    - name: Render Keycloak manifests
+      ansible.builtin.template:
+        src: keycloak.yml.j2
+        dest: "/etc/containers/systemd/keycloak-{{ keycloak_replica }}.yml"
+        owner: root
+        group: root
+        mode: "0600"
+      vars:
+        keycloak_replica: "{{ item }}"
+      loop: "{{ range(1, keycloak_replicas + 1) | list }}"
+      register: keycloak_manifests
+
+    # Реплики по очереди: первая импортирует realm и создаёт схему БД, вторая
+    # стартует на готовой схеме и находит первую через jdbc-ping.
+    - name: Run Keycloak replicas
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: "keycloak-{{ item.item }}"
+        podman_kube_description: "Keycloak replica {{ item.item }}"
+        podman_kube_network: keycloak.network
+        podman_kube_requires: [keycloak-postgres.service]
+        podman_kube_manifest_changed: "{{ item is changed }}"
+        podman_kube_publish:
+          - "127.0.0.1:{{ app_ports.keycloak[item.item - 1] }}:8080"
+          - "127.0.0.1:{{ app_ports.keycloak_management[item.item - 1] }}:9000"
+      loop: "{{ keycloak_manifests.results }}"
+      loop_control:
+        label: "keycloak-{{ item.item }}"

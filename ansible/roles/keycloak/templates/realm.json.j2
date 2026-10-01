@@ -1,0 +1,52 @@
+{%- set users = [] -%}
+{%- for user in keycloak_realm_users -%}
+{%-   set _ = users.append({
+        'username': user.username,
+        'email': user.email,
+        'emailVerified': true,
+        'enabled': true,
+        'realmRoles': user.realm_roles | default([]),
+        'credentials': [{'type': 'password', 'value': user.password, 'temporary': false}],
+      }) -%}
+{%- endfor -%}
+{{ {
+  'realm': keycloak_realm,
+  'enabled': true,
+  'eventsEnabled': true,
+  'eventsExpiration': 900,
+  'adminEventsEnabled': true,
+  'adminEventsDetailsEnabled': true,
+  'roles': {
+    'realm': [{'name': 'grafana-admin', 'description': 'Admin role in Grafana'}],
+  },
+  'clients': [{
+    'clientId': 'grafana',
+    'name': 'Grafana',
+    'enabled': true,
+    'protocol': 'openid-connect',
+    'publicClient': false,
+    'clientAuthenticatorType': 'client-secret',
+    'secret': keycloak_grafana_client_secret,
+    'standardFlowEnabled': true,
+    'directAccessGrantsEnabled': false,
+    'rootUrl': keycloak_grafana_url,
+    'baseUrl': keycloak_grafana_url,
+    'redirectUris': [keycloak_grafana_url ~ '/login/generic_oauth'],
+    'webOrigins': [keycloak_grafana_url],
+    'attributes': {'post.logout.redirect.uris': keycloak_grafana_url ~ '/*'},
+    'protocolMappers': [{
+      'name': 'realm roles',
+      'protocol': 'openid-connect',
+      'protocolMapper': 'oidc-usermodel-realm-role-mapper',
+      'config': {
+        'claim.name': 'roles',
+        'multivalued': 'true',
+        'jsonType.label': 'String',
+        'id.token.claim': 'true',
+        'access.token.claim': 'true',
+        'userinfo.token.claim': 'true',
+      },
+    }],
+  }],
+  'users': users,
+} | to_nice_json }}

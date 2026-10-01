@@ -7,5 +7,7 @@
   roles:
     - role: wordpress
       tags: [wordpress]
+    - role: keycloak
+      tags: [keycloak]
     - role: test_backends
       tags: [test_backends]

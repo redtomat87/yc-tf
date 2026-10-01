@@ -1,0 +1,92 @@
+# {{ ansible_managed }}
+# Реплика Keycloak {{ keycloak_replica }}. Реплики находят друг друга через таблицу
+# в PostgreSQL (стек jdbc-ping, по умолчанию в Keycloak 26) и держат общий кэш сессий.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: keycloak-{{ keycloak_replica }}-secrets
+type: Opaque
+data:
+  db-password: {{ keycloak_db_password | b64encode }}
+  admin-password: {{ keycloak_admin_password | b64encode }}
+{% if keycloak_replica == 1 %}
+  realm.json: {{ lookup('ansible.builtin.template', 'realm.json.j2') | b64encode }}
+{% endif %}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: keycloak-{{ keycloak_replica }}
+  labels:
+    app: keycloak
+    component: server
+spec:
+  containers:
+    - name: keycloak
+      image: {{ keycloak_image }}
+      args:
+        - start
+{% if keycloak_replica == 1 %}
+        # Импорт только на первой реплике: realm, который уже есть, пропускается.
+        - --import-realm
+{% endif %}
+      env:
+        - name: KC_DB
+          value: postgres
+        - name: KC_DB_URL
+          value: jdbc:postgresql://keycloak-postgres:5432/{{ keycloak_db_name }}
+        - name: KC_DB_USERNAME
+          value: {{ keycloak_db_user }}
+        - name: KC_DB_PASSWORD
+          valueFrom: { secretKeyRef: { name: keycloak-{{ keycloak_replica }}-secrets, key: db-password } }
+        - name: KC_BOOTSTRAP_ADMIN_USERNAME
+          value: {{ keycloak_admin_user }}
+        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+          valueFrom: { secretKeyRef: { name: keycloak-{{ keycloak_replica }}-secrets, key: admin-password } }
+        # TLS завершается на Angie.
+        - name: KC_HOSTNAME
+          value: {{ keycloak_url }}
+        - name: KC_HTTP_ENABLED
+          value: "true"
+        - name: KC_PROXY_HEADERS
+          value: xforwarded
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        - name: KC_METRICS_ENABLED
+          value: "true"
+        - name: KC_LOG_LEVEL
+          value: {{ keycloak_log_level }}
+      ports:
+        - containerPort: 8080
+        - containerPort: 9000
+      # В образе нет curl, а httpGet-пробу Podman превращает в curl. Проверяем /health/ready
+      # на management-порту средствами bash.
+      livenessProbe:
+        exec:
+          command:
+            - bash
+            - -c
+            - >-
+              exec 3<>/dev/tcp/127.0.0.1/9000 &&
+              printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+              head -1 <&3 | grep -q ' 200 '
+        initialDelaySeconds: 60
+        periodSeconds: 15
+        timeoutSeconds: 5
+        failureThreshold: 6
+      resources:
+        limits:
+          memory: {{ keycloak_memory_limit }}
+{% if keycloak_replica == 1 %}
+      volumeMounts:
+        - name: realm
+          mountPath: /opt/keycloak/data/import
+          readOnly: true
+  volumes:
+    - name: realm
+      secret:
+        secretName: keycloak-1-secrets
+        items:
+          - key: realm.json
+            path: realm.json
+{% endif %}

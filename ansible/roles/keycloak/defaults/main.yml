@@ -1,0 +1,28 @@
+---
+keycloak_image: quay.io/keycloak/keycloak:26.8.0
+keycloak_postgres_image: docker.io/library/postgres:18.6-alpine
+
+keycloak_url: "https://{{ angie_vhosts.keycloak.server_name }}"
+keycloak_admin_user: admin
+keycloak_admin_password: "{{ vault_keycloak_admin_password }}"
+
+keycloak_db_name: keycloak
+keycloak_db_user: keycloak
+keycloak_db_password: "{{ vault_keycloak_db_password }}"
+
+keycloak_log_level: INFO
+# На JVM Keycloak отдаёт до 70% лимита (MaxRAMPercentage в образе).
+keycloak_memory_limit: 768Mi
+
+# Реплики: порты на 127.0.0.1 — app_ports.keycloak и app_ports.keycloak_management, по порядку.
+keycloak_replicas: 2
+
+# Realm для входа в Grafana: клиент grafana, роль grafana-admin даёт роль Admin в Grafana.
+keycloak_realm: grafana
+keycloak_grafana_url: "https://{{ angie_vhosts.grafana.server_name }}"
+keycloak_grafana_client_secret: "{{ vault_grafana_oauth_client_secret }}"
+keycloak_realm_users:
+  - username: admin
+    email: "admin@{{ site_domain }}"
+    password: "{{ vault_grafana_admin_password }}"
+    realm_roles: [grafana-admin]

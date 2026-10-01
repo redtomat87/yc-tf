@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Сеть PostgreSQL и реплик Keycloak: по ней же идёт кластерный трафик JGroups (7800).
+# Podman-имя сети: systemd-keycloak.
+[Network]
+Label=app=keycloak

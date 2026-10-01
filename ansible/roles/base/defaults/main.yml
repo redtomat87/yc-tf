@@ -9,4 +9,7 @@ base_packages:
   - prometheus-node-exporter
   - unzip
 
-base_node_exporter_listen: 127.0.0.1:9100
+# 127.0.0.1 и, если Prometheus на другой ВМ, частный IP (topology.yml).
+base_node_exporter_listen: >-
+  {{ ['127.0.0.1:' ~ app_ports.node_exporter]
+     + ([private_ip ~ ':' ~ app_ports.node_exporter] if remote_consumers.prometheus else []) }}

@@ -5,12 +5,12 @@
     enabled: true
     state: started
 
-# Метрики хоста читает Prometheus с того же хоста; наружу порт не нужен.
-- name: Bind node_exporter to loopback
+# Наружу порт не нужен: только loopback и, если Prometheus на другой ВМ, частный IP.
+- name: Set node_exporter listen addresses
   ansible.builtin.lineinfile:
     path: /etc/default/prometheus-node-exporter
     regexp: "^ARGS="
-    line: 'ARGS="--web.listen-address={{ base_node_exporter_listen }}"'
+    line: 'ARGS="{{ base_node_exporter_listen | map("regex_replace", "^", "--web.listen-address=") | join(" ") }}"'
     create: true
     owner: root
     group: root

@@ -60,6 +60,7 @@ variable "vms" {
     boot_disk_size        = optional(number, 20)
     boot_disk_auto_delete = optional(bool, true)
     nat                   = optional(bool, true)
+    static_ip             = optional(bool, false)
     network_name          = string
     subnet_name           = string
     dns_records           = optional(list(string), [])
@@ -77,6 +78,11 @@ variable "vms" {
       for vm in var.vms : [for group in vm.ansible_groups : can(regex("^[a-z_][a-z0-9_]*$", group))]
     ]))
     error_message = "ansible_groups entries must be valid Ansible group names: lowercase letters, digits and underscores."
+  }
+
+  validation {
+    condition     = alltrue([for vm in var.vms : vm.nat || !vm.static_ip])
+    error_message = "static_ip needs nat = true."
   }
 
   validation {

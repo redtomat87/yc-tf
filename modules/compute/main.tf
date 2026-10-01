@@ -8,6 +8,18 @@ data "yandex_compute_image" "family" {
   family = each.key
 }
 
+# Зарезервированный адрес не меняется при остановке preemptible-ВМ, и DNS-записи остаются верными.
+resource "yandex_vpc_address" "static" {
+  for_each = { for name, vm in var.vms : name => vm if vm.static_ip }
+
+  name   = "${each.key}-public"
+  labels = each.value.labels
+
+  external_ipv4_address {
+    zone_id = var.zone_of_availability
+  }
+}
+
 resource "yandex_compute_disk" "boot" {
   for_each = var.vms
 
@@ -49,6 +61,7 @@ resource "yandex_compute_instance" "vm" {
   network_interface {
     subnet_id          = var.subnet_ids["${each.value.network_name}-${each.value.subnet_name}"]
     nat                = each.value.nat
+    nat_ip_address     = each.value.static_ip ? yandex_vpc_address.static[each.key].external_ipv4_address[0].address : null
     security_group_ids = [var.security_group_ids[each.value.network_name]]
   }
 

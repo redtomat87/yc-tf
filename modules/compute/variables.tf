@@ -11,6 +11,7 @@ variable "vms" {
     boot_disk_size        = number
     boot_disk_auto_delete = bool
     nat                   = bool
+    static_ip             = bool
     network_name          = string
     subnet_name           = string
     labels                = map(string)

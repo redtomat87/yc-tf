@@ -4,7 +4,7 @@
     that: podman_kube_name | length > 0
     fail_msg: podman_kube_name не задан
 
-- name: "Render Quadlet unit {{ podman_kube_name }}.kube"
+- name: "Render Quadlet unit for {{ podman_kube_name }}"
   ansible.builtin.template:
     src: unit.kube.j2
     dest: "{{ podman_kube_dir }}/{{ podman_kube_name }}.kube"
@@ -20,7 +20,7 @@
   when: podman_kube_unit is changed
 
 # Сгенерированные Quadlet-юниты нельзя enable: автозапуск задаёт [Install] в .kube.
-- name: "Restart {{ podman_kube_name }} after changes"
+- name: "Restart after changes: {{ podman_kube_name }}"
   ansible.builtin.systemd_service:
     name: "{{ podman_kube_name }}.service"
     state: restarted

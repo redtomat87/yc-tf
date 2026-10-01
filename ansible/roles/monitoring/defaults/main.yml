@@ -15,8 +15,9 @@ monitoring_keycloak_realm: grafana
 monitoring_oauth_client_secret: "{{ vault_grafana_oauth_client_secret }}"
 
 monitoring_prometheus_memory_limit: 512Mi
-# Grafana 13 при 256Mi уходит в сборку мусора и не дожидается конца миграций.
-monitoring_grafana_memory_limit: 512Mi
+# Grafana 13 при 256Mi уходит в сборку мусора и не дожидается конца миграций,
+# при 512Mi её убивает OOM под фоновым трафиком сканеров.
+monitoring_grafana_memory_limit: 1Gi
 
 # Дашборды из files/dashboards/<name>.json, каждый в своём ConfigMap (лимит Kubernetes — 1 MiB).
 monitoring_dashboards: [angie, keycloak, mysql, node-exporter, podman]

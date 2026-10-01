@@ -1,9 +1,9 @@
 locals {
-  vm_with_labels = [
-    for vm in var.vm : merge(vm, {
+  vms = {
+    for name, vm in var.vms : name => merge(vm, {
       labels = merge(var.common_labels, vm.labels)
     })
-  ]
+  }
 }
 
 module "network" {
@@ -16,10 +16,10 @@ module "network" {
   public_udp_ports     = var.public_udp_ports
 }
 
-module "compute_instance" {
-  source = "./tf_modules/compute_instance"
+module "compute" {
+  source = "./modules/compute"
 
-  vm                   = local.vm_with_labels
+  vms                  = local.vms
   zone_of_availability = var.zone_of_availability
   subnet_ids           = module.network.subnet_ids
   security_group_ids   = module.network.security_group_ids
@@ -27,15 +27,21 @@ module "compute_instance" {
 }
 
 module "dns" {
-  source = "./tf_modules/dns_recordsets"
+  source = "./modules/dns_records"
 
-  vm      = local.vm_with_labels
-  zone_id = yandex_dns_zone.redtomat-ru.id
-  vm_ips  = module.compute_instance.vm_ips
+  vms        = { for name, vm in local.vms : name => vm if vm.nat }
+  public_ips = { for name, vm in module.compute.vms : name => vm.public_ip if local.vms[name].nat }
+  zone_id    = yandex_dns_zone.redtomat-ru.id
 }
 
 module "ansible_inventory" {
-  source       = "./tf_modules/ansible_inventory"
-  vm_instances = module.compute_instance.vm_instances
-}
+  source = "./modules/ansible_inventory"
 
+  vms = {
+    for name, vm in module.compute.vms : name => merge(vm, {
+      ansible_groups = local.vms[name].ansible_groups
+    })
+  }
+  ssh_user       = "ubuntu"
+  inventory_file = "${path.root}/ansible/inventories/yc/hosts.yml"
+}

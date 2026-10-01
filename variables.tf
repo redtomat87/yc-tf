@@ -7,11 +7,6 @@ variable "zone_of_availability" {
   type = string
 }
 
-variable "v4_cidr_blocks" {
-  type    = list(string)
-  default = ["192.168.10.0/24"]
-}
-
 variable "dns_zone" {
   type    = string
   default = ""
@@ -52,22 +47,46 @@ variable "networks" {
   }))
 }
 
-variable "vm" {
-  type = list(object({
-    name                  = string
-    cores                 = number
-    memory                = number
-    core_fraction         = number
-    boot_disk_type        = string
-    boot_disk_size        = number
-    boot_disk_image       = string
-    preemptible           = bool
-    nat                   = bool
-    boot_disk_auto_delete = bool
-    dns_records           = list(string)
+variable "vms" {
+  description = "VMs keyed by name. Everything except network_name/subnet_name is optional."
+  type = map(object({
+    cores                 = optional(number, 2)
+    memory                = optional(number, 4)
+    core_fraction         = optional(number, 100)
+    platform_id           = optional(string, "standard-v3")
+    preemptible           = optional(bool, false)
+    image_family          = optional(string, "ubuntu-2604-lts")
+    boot_disk_type        = optional(string, "network-ssd")
+    boot_disk_size        = optional(number, 20)
+    boot_disk_auto_delete = optional(bool, true)
+    nat                   = optional(bool, true)
     network_name          = string
     subnet_name           = string
-    labels                = map(string)
+    dns_records           = optional(list(string), [])
+    labels                = optional(map(string), {})
+    ansible_groups        = optional(list(string), [])
   }))
+
+  validation {
+    condition     = alltrue([for name, vm in var.vms : can(regex("^[a-z][-a-z0-9]{1,61}[a-z0-9]$", name))])
+    error_message = "VM names must be 3-63 chars: lowercase letters, digits and hyphens, starting with a letter."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for vm in var.vms : [for group in vm.ansible_groups : can(regex("^[a-z_][a-z0-9_]*$", group))]
+    ]))
+    error_message = "ansible_groups entries must be valid Ansible group names: lowercase letters, digits and underscores."
+  }
+
+  validation {
+    condition     = alltrue([for vm in var.vms : vm.nat || length(vm.dns_records) == 0])
+    error_message = "dns_records need a public IP: set nat = true for that VM."
+  }
+
+  validation {
+    condition     = length(flatten([for vm in var.vms : vm.dns_records])) == length(distinct(flatten([for vm in var.vms : vm.dns_records])))
+    error_message = "Each DNS record name may belong to one VM only."
+  }
 }
 

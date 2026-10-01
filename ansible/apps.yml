@@ -5,5 +5,7 @@
   hosts: apps
   become: true
   roles:
+    - role: wordpress
+      tags: [wordpress]
     - role: test_backends
       tags: [test_backends]

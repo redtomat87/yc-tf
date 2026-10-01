@@ -1,0 +1,143 @@
+# {{ ansible_managed }}
+# WordPress + MySQL + mysqld_exporter в одном pod'е: общий localhost, наружу только
+# порты из .kube (127.0.0.1), MySQL снаружи pod'а недоступен вовсе.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wordpress-secrets
+type: Opaque
+data:
+  mysql-root-password: {{ wordpress_mysql_root_password | b64encode }}
+  db-password: {{ wordpress_db_password | b64encode }}
+  exporter-password: {{ wordpress_exporter_password | b64encode }}
+{% for key, value in wordpress_salts.items() %}
+  {{ key | lower | replace('_', '-') }}: {{ value | b64encode }}
+{% endfor %}
+  # Выполняется образом MySQL только при инициализации пустого тома.
+  init-exporter.sql: {{ ("CREATE USER IF NOT EXISTS '" ~ wordpress_exporter_user ~ "'@'%' IDENTIFIED BY '"
+                         ~ wordpress_exporter_password ~ "' WITH MAX_USER_CONNECTIONS 3;\n"
+                         ~ "GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO '" ~ wordpress_exporter_user ~ "'@'%';\n")
+                        | b64encode }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-db
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-html
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  containers:
+    - name: mysql
+      image: {{ wordpress_mysql_image }}
+      env:
+        - name: MYSQL_DATABASE
+          value: {{ wordpress_db_name }}
+        - name: MYSQL_USER
+          value: {{ wordpress_db_user }}
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: { secretKeyRef: { name: wordpress-secrets, key: mysql-root-password } }
+        - name: MYSQL_PASSWORD
+          valueFrom: { secretKeyRef: { name: wordpress-secrets, key: db-password } }
+      args:
+        # Только localhost pod'а.
+        - --bind-address=127.0.0.1
+        - --mysqlx=OFF
+      livenessProbe:
+        exec:
+          command: [mysqladmin, ping, -h, 127.0.0.1, --silent]
+        initialDelaySeconds: 30
+        periodSeconds: 10
+      resources:
+        limits:
+          memory: {{ wordpress_mysql_memory_limit }}
+      volumeMounts:
+        - name: db
+          mountPath: /var/lib/mysql
+        - name: init
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+
+    - name: wordpress
+      image: {{ wordpress_image }}
+      env:
+        - name: WORDPRESS_DB_HOST
+          value: 127.0.0.1:3306
+        - name: WORDPRESS_DB_NAME
+          value: {{ wordpress_db_name }}
+        - name: WORDPRESS_DB_USER
+          value: {{ wordpress_db_user }}
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom: { secretKeyRef: { name: wordpress-secrets, key: db-password } }
+{% for key in wordpress_salts %}
+        - name: WORDPRESS_{{ key }}
+          valueFrom: { secretKeyRef: { name: wordpress-secrets, key: {{ key | lower | replace('_', '-') }} } }
+{% endfor %}
+        # TLS завершается на Angie: по X-Forwarded-Proto WordPress понимает, что он на https.
+        - name: WORDPRESS_CONFIG_EXTRA
+          value: |
+            if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') { $_SERVER['HTTPS'] = 'on'; }
+            define('WP_HOME', '{{ wordpress_url }}');
+            define('WP_SITEURL', '{{ wordpress_url }}');
+            define('FORCE_SSL_ADMIN', true);
+            define('DISALLOW_FILE_EDIT', true);
+      ports:
+        - containerPort: 80
+      resources:
+        limits:
+          memory: {{ wordpress_memory_limit }}
+      volumeMounts:
+        - name: html
+          mountPath: /var/www/html
+
+    - name: mysqld-exporter
+      image: {{ wordpress_exporter_image }}
+      args:
+        - --mysqld.address=127.0.0.1:3306
+        - --mysqld.username={{ wordpress_exporter_user }}
+        - --web.listen-address=:9104
+      env:
+        - name: MYSQLD_EXPORTER_PASSWORD
+          valueFrom: { secretKeyRef: { name: wordpress-secrets, key: exporter-password } }
+      ports:
+        - containerPort: 9104
+      resources:
+        limits:
+          memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+
+  volumes:
+    - name: db
+      persistentVolumeClaim:
+        claimName: wordpress-db
+    - name: html
+      persistentVolumeClaim:
+        claimName: wordpress-html
+    - name: init
+      secret:
+        secretName: wordpress-secrets
+        items:
+          - key: init-exporter.sql
+            path: init-exporter.sql

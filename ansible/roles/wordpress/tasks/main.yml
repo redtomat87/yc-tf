@@ -1,5 +1,24 @@
-- name: 'INSTALL mysql'
-  ansible.builtin.import_tasks: mysql.yml
+---
+- name: Deploy WordPress
+  tags: [config, wordpress_config]
+  block:
+    # 0600: в манифесте Secret с паролями (base64 — не шифрование).
+    - name: Render WordPress manifest
+      ansible.builtin.template:
+        src: wordpress.yml.j2
+        dest: /etc/containers/systemd/wordpress.yml
+        owner: root
+        group: root
+        mode: "0600"
+      register: wordpress_manifest
 
-- name: 'INSTALL wordpress'
-  ansible.builtin.import_tasks: "{{ installation_type }}.yml"
+    - name: Run WordPress pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: wordpress
+        podman_kube_description: WordPress, MySQL and mysqld_exporter
+        podman_kube_manifest_changed: "{{ wordpress_manifest is changed }}"
+        podman_kube_publish:
+          - "127.0.0.1:{{ app_ports.wordpress }}:80"
+          - "127.0.0.1:{{ app_ports.mysqld_exporter }}:9104"

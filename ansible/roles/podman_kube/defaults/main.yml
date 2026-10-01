@@ -32,3 +32,6 @@ podman_kube_wait_retries: 60
 podman_kube_wait_delay: 5
 
 podman_kube_dir: /etc/containers/systemd
+
+# Контейнеры должны работать под профилем AppArmor из containers.conf, не unconfined.
+podman_kube_apparmor_profile_prefix: containers-default-

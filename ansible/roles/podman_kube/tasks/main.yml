@@ -46,3 +46,22 @@
     podman_kube_ps.stdout_lines | select('search', '\((starting|unhealthy)\)') | list | length == 0
   retries: "{{ podman_kube_wait_retries }}"
   delay: "{{ podman_kube_wait_delay }}"
+
+- name: "Read AppArmor profiles of {{ podman_kube_name }}"
+  ansible.builtin.command:
+    cmd: >-
+      podman ps --filter label=PODMAN_SYSTEMD_UNIT={{ podman_kube_name }}.service
+      --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: podman_kube_names
+  changed_when: false
+  tags: [verify]
+
+- name: "Check AppArmor profiles of {{ podman_kube_name }}"
+  ansible.builtin.command:
+    cmd: podman inspect --format '{{ '{{' }}.Name{{ '}}' }} {{ '{{' }}.AppArmorProfile{{ '}}' }}' {{ podman_kube_names.stdout_lines | join(' ') }}
+  register: podman_kube_profiles
+  changed_when: false
+  failed_when: >-
+    podman_kube_profiles.rc != 0 or
+    podman_kube_profiles.stdout_lines | reject('search', ' ' ~ podman_kube_apparmor_profile_prefix) | list | length > 0
+  tags: [verify]

@@ -1,6 +1,8 @@
 # {{ ansible_managed }}
 # Реплика Keycloak {{ keycloak_replica }}. Реплики находят друг друга через таблицу
 # в PostgreSQL (стек jdbc-ping, по умолчанию в Keycloak 26) и держат общий кэш сессий.
+# Порт JGroups опубликован на частном IP ВМ, и этот адрес реплика объявляет соседям:
+# адрес контейнера в bridge-сети с других ВМ недоступен.
 apiVersion: v1
 kind: Secret
 metadata:
@@ -33,8 +35,9 @@ spec:
       env:
         - name: KC_DB
           value: postgres
+        # PostgreSQL на этой же ВМ — по имени pod'а в сети keycloak, на другой — по частному IP.
         - name: KC_DB_URL
-          value: jdbc:postgresql://keycloak-postgres:5432/{{ keycloak_db_name }}
+          value: jdbc:postgresql://{{ keycloak_db_address }}/{{ keycloak_db_name }}
         - name: KC_DB_USERNAME
           value: {{ keycloak_db_user }}
         - name: KC_DB_PASSWORD
@@ -50,6 +53,10 @@ spec:
           value: "true"
         - name: KC_PROXY_HEADERS
           value: xforwarded
+        - name: KC_CACHE_EMBEDDED_NETWORK_EXTERNAL_ADDRESS
+          value: "{{ private_ip }}"
+        - name: KC_CACHE_EMBEDDED_NETWORK_EXTERNAL_PORT
+          value: "{{ keycloak_jgroups_port }}"
         - name: KC_HEALTH_ENABLED
           value: "true"
         - name: KC_METRICS_ENABLED
@@ -59,6 +66,7 @@ spec:
       ports:
         - containerPort: 8080
         - containerPort: 9000
+        - containerPort: 7800
       # В образе нет curl, а httpGet-пробу Podman превращает в curl. Проверяем /health/ready
       # на management-порту средствами bash. Пока идёт старт (startupProbe, до 10 минут),
       # liveness не проверяется.

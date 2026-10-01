@@ -1,0 +1,29 @@
+---
+# PostgreSQL для Keycloak (группа keycloak_db).
+- name: Deploy PostgreSQL for Keycloak
+  tags: [config, keycloak_config]
+  block:
+    - name: Render Keycloak network
+      ansible.builtin.include_tasks: network.yml
+
+    # 0600: в манифесте Secret с паролем (base64 — не шифрование).
+    - name: Render PostgreSQL manifest
+      ansible.builtin.template:
+        src: keycloak-postgres.yml.j2
+        dest: /etc/containers/systemd/keycloak-postgres.yml
+        owner: root
+        group: root
+        mode: "0600"
+      register: keycloak_postgres_manifest
+
+    # На частном IP — только если реплики Keycloak есть на других ВМ.
+    - name: Run PostgreSQL pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: keycloak-postgres
+        podman_kube_description: PostgreSQL for Keycloak
+        podman_kube_network: keycloak.network
+        podman_kube_manifest_changed: "{{ keycloak_postgres_manifest is changed or keycloak_network is changed }}"
+        podman_kube_publish:
+          - { port: "{{ app_ports.keycloak_db }}", container_port: 5432, remote: "{{ remote_consumers.keycloak }}" }

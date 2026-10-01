@@ -1,0 +1,49 @@
+---
+# Реплики Keycloak этого хоста (группа keycloak, раскладка — keycloak_instances).
+- name: Deploy Keycloak replicas
+  tags: [config, keycloak_config]
+  vars:
+    keycloak_local_instances: "{{ keycloak_instances | selectattr('host', 'equalto', inventory_hostname) | list }}"
+    keycloak_db_host: "{{ groups['keycloak_db'][0] }}"
+    keycloak_db_address: >-
+      {{ 'keycloak-postgres:5432' if keycloak_db_host == inventory_hostname
+         else hostvars[keycloak_db_host].private_ip ~ ':' ~ app_ports.keycloak_db }}
+  block:
+    - name: Render Keycloak network
+      ansible.builtin.include_tasks: network.yml
+
+    # 0600: в манифестах Secret с паролями (base64 — не шифрование).
+    - name: Render Keycloak manifests
+      ansible.builtin.template:
+        src: keycloak.yml.j2
+        dest: "/etc/containers/systemd/keycloak-{{ item.id }}.yml"
+        owner: root
+        group: root
+        mode: "0600"
+      vars:
+        keycloak_replica: "{{ item.id }}"
+        keycloak_jgroups_port: "{{ item.jgroups_port }}"
+      loop: "{{ keycloak_local_instances }}"
+      loop_control:
+        label: "keycloak-{{ item.id }}"
+      register: keycloak_manifests
+
+    # Реплики по очереди: первая импортирует realm и создаёт схему БД, следующие
+    # стартуют на готовой схеме и находят остальных через jdbc-ping.
+    # JGroups всегда на частном IP: по нему реплики видят друг друга, в том числе на одной ВМ.
+    - name: Run Keycloak replicas
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: "keycloak-{{ item.item.id }}"
+        podman_kube_description: "Keycloak replica {{ item.item.id }}"
+        podman_kube_network: keycloak.network
+        podman_kube_requires: "{{ ['keycloak-postgres.service'] if keycloak_db_host == inventory_hostname else [] }}"
+        podman_kube_manifest_changed: "{{ item is changed or keycloak_network is changed }}"
+        podman_kube_publish:
+          - { port: "{{ item.item.http_port }}", container_port: 8080, remote: "{{ remote_consumers.web }}" }
+          - { port: "{{ item.item.management_port }}", container_port: 9000, remote: "{{ remote_consumers.prometheus }}" }
+          - { port: "{{ item.item.jgroups_port }}", container_port: 7800, remote: true }
+      loop: "{{ keycloak_manifests.results }}"
+      loop_control:
+        label: "keycloak-{{ item.item.id }}"

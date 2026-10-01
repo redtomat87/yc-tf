@@ -14,8 +14,7 @@ keycloak_log_level: INFO
 # На JVM Keycloak отдаёт до 70% лимита (MaxRAMPercentage в образе).
 keycloak_memory_limit: 768Mi
 
-# Реплики: порты на 127.0.0.1 — app_ports.keycloak и app_ports.keycloak_management, по порядку.
-keycloak_replicas: 2
+# Сколько реплик и где — keycloak_instances в group_vars/all/topology.yml.
 
 # Realm для входа в Grafana: клиент grafana, роль grafana-admin даёт роль Admin в Grafana.
 # Импортируется при первом старте; realm, который уже есть, при импорте не меняется.

@@ -1,0 +1,78 @@
+---
+# Проверки Angie после развёртывания (verify.yml в корне). Ничего не меняют.
+- name: Read AppArmor label of the Angie master
+  ansible.builtin.shell:
+    cmd: cat "/proc/$(cat /run/angie.pid)/attr/current"
+  register: angie_verify_label
+  changed_when: false
+
+- name: Angie runs under its AppArmor profile
+  ansible.builtin.assert:
+    that: angie_verify_label.stdout == 'angie (' ~ angie_apparmor_mode ~ ')'
+    fail_msg: "Angie под «{{ angie_verify_label.stdout }}», ожидался профиль angie ({{ angie_apparmor_mode }})"
+    quiet: true
+
+# Angie создаёт certificate.pem нулевого размера, пока сертификат не выпущен.
+- name: Check that a certificate has been issued
+  ansible.builtin.stat:
+    path: "/var/lib/angie/acme/{{ angie_acme_client }}_rsa/certificate.pem"
+  register: angie_verify_cert_file
+
+- name: Certificate must be issued with the production CA
+  ansible.builtin.assert:
+    that: angie_verify_cert_file.stat.size | default(0) > 0 or 'staging' in angie_acme_ca
+    fail_msg: "Сертификат {{ angie_acme_client }} не выпущен: смотреть /var/log/angie/error.log"
+    quiet: true
+
+- name: Report skipped HTTPS checks
+  ansible.builtin.debug:
+    msg: Сертификата staging нет (ACME не прошёл, например из частной сети), HTTPS-проверки пропущены.
+  when: angie_verify_cert_file.stat.size | default(0) == 0
+
+# С SNI нужного vhost'а на 127.0.0.1: проверяется сам сервер, а не DNS и NAT облака.
+- name: Request each vhost  # noqa: command-instead-of-module -- uri не умеет --resolve (SNI имени, адрес 127.0.0.1)
+  ansible.builtin.command: >-
+    curl -sk -o /dev/null -D - --max-time 15
+    --resolve {{ item.server_name }}:443:127.0.0.1 https://{{ item.server_name }}/
+  loop: "{{ angie_vhosts_enabled }}"
+  loop_control:
+    label: "{{ item.server_name }}"
+  register: angie_verify_vhosts
+  changed_when: false
+  failed_when: false
+  when: angie_verify_cert_file.stat.size | default(0) > 0
+
+- name: Vhosts answer without 5xx and send HSTS
+  ansible.builtin.assert:
+    that:
+      - item.stdout_lines | length > 0
+      - item.stdout_lines[0] is not search(' 5\d\d')
+      - item.stdout is search('(?i)strict-transport-security')
+    fail_msg: "{{ item.item.server_name }}: {{ item.stdout_lines[0] | default(item.stderr) }}"
+    quiet: true
+  loop: "{{ angie_verify_vhosts.results | default([]) | rejectattr('skipped', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.item.server_name }}"
+
+# Только с боевым CA: staging-сертификат на стенде может не выпуститься вовсе.
+- name: Check the certificate
+  when: "'staging' not in angie_acme_ca"
+  block:
+    - name: Read the served certificate
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          openssl s_client -connect 127.0.0.1:443 -servername {{ angie_vhosts_enabled[0].server_name }} </dev/null 2>/dev/null
+          | openssl x509 -noout -checkend 604800 -ext subjectAltName
+        executable: /bin/bash
+      register: angie_verify_cert
+      changed_when: false
+      failed_when: false
+
+    - name: Certificate covers every vhost and is valid for 7 more days
+      ansible.builtin.assert:
+        that:
+          - angie_verify_cert.rc == 0
+          - angie_vhosts_enabled | map(attribute='server_name') | reject('in', angie_verify_cert.stdout) | list | length == 0
+        fail_msg: "Сертификат истекает в течение 7 дней или не покрывает все имена: {{ angie_verify_cert.stdout }}"
+        quiet: true

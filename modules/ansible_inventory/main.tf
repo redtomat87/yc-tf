@@ -17,6 +17,8 @@ locals {
       hosts = {
         for name, vm in var.vms : name => {
           ansible_host = coalesce(vm.public_ip, vm.private_ip)
+          # Адрес для связи сервисов между ВМ (внутри security group).
+          private_ip = vm.private_ip
         }
       }
       children = {

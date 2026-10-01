@@ -54,9 +54,11 @@ vms = {
       "environment" = "production"
       "role"        = "webserver"
     }
-    # Группы ansible inventory для этой ВМ (a-z, 0-9, _). Плейбуки выбирают хосты по группам:
-    # web — Angie и статика, apps — контейнерные приложения. По умолчанию [].
-    ansible_groups = ["web", "apps"]
+    # Группы ansible inventory для этой ВМ (a-z, 0-9, _): какие сервисы на ней работают.
+    # web — Angie и статика (на эту ВМ указывают dns_records), wordpress, keycloak (реплики),
+    # keycloak_db, prometheus, grafana, test_backends. Сервисы можно разнести по разным ВМ:
+    # адреса друг друга они берут из inventory. По умолчанию [].
+    ansible_groups = ["web", "wordpress", "keycloak", "keycloak_db", "prometheus", "grafana", "test_backends"]
 
     # Количество ядер CPU (2).
     cores = 2

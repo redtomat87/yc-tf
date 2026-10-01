@@ -1,0 +1,18 @@
+---
+# Профиль загружается сразу, а не handler'ом: запуск Angie в configure.yml должен
+# идти уже под новой версией профиля.
+- name: Install AppArmor profile for Angie
+  ansible.builtin.template:
+    src: apparmor/usr.sbin.angie.j2
+    dest: /etc/apparmor.d/usr.sbin.angie
+    owner: root
+    group: root
+    mode: "0644"
+  register: angie_apparmor_profile
+
+- name: Load AppArmor profile  # noqa: no-handler -- нужен до запуска Angie, не в конце play
+  ansible.builtin.command: apparmor_parser --replace --write-cache /etc/apparmor.d/usr.sbin.angie
+  when: angie_apparmor_profile is changed
+  changed_when: true
+  # Уже запущенный без профиля процесс получает его только при exec.
+  notify: Restart Angie

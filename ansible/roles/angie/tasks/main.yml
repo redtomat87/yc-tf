@@ -3,6 +3,10 @@
   ansible.builtin.import_tasks: install.yml
   tags: [install, angie_install]
 
+- name: Confine Angie with AppArmor
+  ansible.builtin.import_tasks: apparmor.yml
+  tags: [config, angie_config, angie_apparmor]
+
 - name: Restore ACME certificates from the local copy
   ansible.builtin.import_tasks: certs.yml
   tags: [config, angie_config, angie_certs]

@@ -1,0 +1,61 @@
+# {{ ansible_managed }}
+# AppArmor-профиль Angie. Режим задаёт angie_apparmor_mode (complain|enforce).
+# Нарушения в complain: journalctl -k | grep 'apparmor="ALLOWED".*angie'
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile angie /usr/sbin/angie{,-debug,-nodebug} flags=({{ angie_apparmor_mode }}) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+  include <abstractions/ssl_certs>
+
+  # master запускается root'ом, переходит на пользователя angie в воркерах,
+  # поднимает лимит дескрипторов (worker_rlimit_nofile) и слушает 80/443.
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+  network unix stream,
+  network netlink raw,
+
+  # master <-> воркеры
+  signal (send, receive) peer=angie,
+  signal (receive) peer=unconfined,
+
+  /usr/sbin/angie{,-debug,-nodebug} mr,
+  /usr/lib/angie/modules/*.so mr,
+
+  /etc/angie/ r,
+  /etc/angie/** r,
+
+  # pid пишется во временный файл и переименовывается
+  /run/angie.pid{,.tmp} rw,
+  /var/log/angie/ r,
+  /var/log/angie/* w,
+
+  # ACME-клиенты (ключи и сертификаты), временные файлы proxy, кэш
+  /var/lib/angie/ r,
+  /var/lib/angie/** rwk,
+  /var/cache/angie/ r,
+  /var/cache/angie/** rwk,
+
+  /usr/share/angie/** r,
+  /usr/share/angie-console-light/** r,
+  /var/www/** r,
+
+  # worker_cpu_affinity auto и число CPU для worker_processes auto
+  /sys/devices/system/cpu/** r,
+  @{PROC}/sys/kernel/random/boot_id r,
+  owner @{PROC}/@{pid}/** r,
+}

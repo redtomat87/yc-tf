@@ -1,0 +1,17 @@
+---
+# Полное развёртывание. Слои — теги install/config, компоненты — теги ролей:
+#   ansible-playbook site.yml                     # всё
+#   ansible-playbook site.yml --tags config       # только конфигурация, без установки пакетов
+#   ansible-playbook site.yml --tags angie        # только Angie
+#   ansible-playbook site.yml --tags full_upgrade # плюс apt full-upgrade
+- name: Base system
+  ansible.builtin.import_playbook: base.yml
+
+- name: Podman
+  ansible.builtin.import_playbook: podman.yml
+
+- name: Web server
+  ansible.builtin.import_playbook: web.yml
+
+- name: Applications
+  ansible.builtin.import_playbook: apps.yml

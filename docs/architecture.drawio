@@ -1,0 +1,187 @@
+<mxfile host="Electron" agent="claude">
+  <diagram name="Architecture" id="yc-vm-architecture">
+    <mxGraphModel dx="2400" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Внешнее ===== -->
+        <mxCell id="admin" value="&lt;b&gt;Машина администратора&lt;/b&gt;&lt;br&gt;terraform, ansible, yc&lt;br&gt;ansible/files/acme-backup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="users" value="Пользователи&lt;br&gt;HTTPS, HTTP/2, HTTP/3" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="600" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="le" value="Let's Encrypt&lt;br&gt;ACME http-01" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="800" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Yandex Cloud ===== -->
+        <mxCell id="yc" value="Yandex Cloud" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=none;strokeColor=#0050a0;dashed=1;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="10" width="2020" height="1560" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="Object Storage&lt;br&gt;terraform state&lt;br&gt;use_lockfile" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="150" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="dns" value="Cloud DNS redtomat.ru&lt;br&gt;angie, static, daily, grafana,&lt;br&gt;auth, angie-backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="500" y="45" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ip" value="Публичный IP&lt;br&gt;динамический или static_ip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="800" y="45" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sg" value="&lt;b&gt;Security group&lt;/b&gt;&lt;br&gt;in: 22 (ssh_allowed_cidrs),&lt;br&gt;80, 443/tcp, 443/udp&lt;br&gt;out: any" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="260" y="600" width="160" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===== ВМ ===== -->
+        <mxCell id="vm" value="ВМ Ubuntu 26.04 — cloud-init (ssh_user), AppArmor enforce" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="170" width="1790" height="1380" as="geometry" />
+        </mxCell>
+
+        <!-- Колонка 1: Angie и хост -->
+        <mxCell id="angie" value="&lt;b&gt;Angie&lt;/b&gt; (хост, профиль AppArmor angie)&lt;br&gt;:80 → 301 + ACME http-01&lt;br&gt;:443 tcp/udp, неизвестный SNI отклоняется&lt;br&gt;SAN-сертификат site_rsa + site_ecdsa,&lt;br&gt;общий account.key&lt;br&gt;127.0.0.1:8079 /status/, /metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="490" y="560" width="300" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="hostsvc" value="&lt;b&gt;Хост&lt;/b&gt;: node_exporter 127.0.0.1:9100&lt;br&gt;fail2ban: sshd, angie auth / limit_req&lt;br&gt;/etc/hosts: 127.0.0.1 auth.redtomat.ru" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1000" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="podman" value="&lt;b&gt;Podman 6&lt;/b&gt; (OBS alvistack), rootful&lt;br&gt;Kubernetes YAML + Quadlet .kube&lt;br&gt;UserNS=auto, слот UID на pod&lt;br&gt;AppArmor containers-default&lt;br&gt;порты только 127.0.0.1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1130" width="300" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Колонка 2: vhost'ы -->
+        <mxCell id="vh_console" value="angie.* — /console/ (basic auth)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="240" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_static" value="static.*" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="340" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_wp" value="daily.* — proxy_cache" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="475" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_kc" value="auth.* — least_conn + sticky cookie" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="745" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_grafana" value="grafana.*" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="1010" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_prom" value="grafana.*/prometheus (basic auth)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="1160" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vh_tb" value="angie-backend.* (basic auth)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="900" y="1390" width="250" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Колонка 3: бэкенды -->
+        <mxCell id="console" value="angie-console-light&lt;br&gt;API /status/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="230" width="210" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="static" value="/var/www/static&lt;br&gt;(роль static_site)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="330" width="210" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pod_wp" value="pod wordpress" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="420" width="940" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="wp" value="wordpress (apache)&lt;br&gt;127.0.0.1:8090" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="465" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mysql" value="MySQL 8.4&lt;br&gt;PVC wordpress-db" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1590" y="455" width="160" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="mexp" value="mysqld_exporter&lt;br&gt;127.0.0.1:9104" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="465" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="wphtml" value="PVC wordpress-html, Secret wordpress-secrets" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="560" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="net_kc" value="сеть systemd-keycloak (keycloak.network)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="650" width="940" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="kc1" value="pod keycloak-1&lt;br&gt;127.0.0.1:8081, mgmt :9011&lt;br&gt;--import-realm" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="700" width="210" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="kc2" value="pod keycloak-2&lt;br&gt;127.0.0.1:8082, mgmt :9012" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="840" width="210" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="jg" value="JGroups jdbc-ping&lt;br&gt;общий кэш сессий" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1600" y="775" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" value="pod keycloak-postgres&lt;br&gt;PostgreSQL 18&lt;br&gt;PVC keycloak-db" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="745" width="180" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="grafana" value="&lt;b&gt;pod grafana&lt;/b&gt; (hostNetwork)&lt;br&gt;Grafana 13, 127.0.0.1:3000&lt;br&gt;вход через Keycloak&lt;br&gt;PVC grafana-data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="985" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="prom" value="&lt;b&gt;pod prometheus&lt;/b&gt; (hostNetwork)&lt;br&gt;Prometheus 3&lt;br&gt;127.0.0.1:9090/prometheus&lt;br&gt;PVC prometheus-data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="1135" width="230" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="pexp" value="&lt;b&gt;pod podman-exporter&lt;/b&gt;&lt;br&gt;hostNetwork, UserNS=host&lt;br&gt;127.0.0.1:9882&lt;br&gt;/run/podman/podman.sock" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1680" y="1135" width="220" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tb" value="pods test-backend-1..4 (webdebugger)&lt;br&gt;127.0.0.1:9001-9004" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="1375" width="320" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Легенда -->
+        <mxCell id="legend" value="&lt;b&gt;Связи&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#d6001c&quot;&gt;━━ &lt;/font&gt;внешний трафик&lt;br&gt;&lt;font color=&quot;#ff8000&quot;&gt;━━ &lt;/font&gt;Angie → vhost → бэкенд на 127.0.0.1&lt;br&gt;&lt;font color=&quot;#0050ef&quot;&gt;━━ &lt;/font&gt;базы данных&lt;br&gt;&lt;font color=&quot;#7f00ff&quot;&gt;━━ &lt;/font&gt;кластер Keycloak&lt;br&gt;&lt;font color=&quot;#008a00&quot;&gt;┅┅ &lt;/font&gt;сбор метрик Prometheus&lt;br&gt;&lt;font color=&quot;#e3008c&quot;&gt;┅┅ &lt;/font&gt;OAuth Grafana → Keycloak через Angie&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;┅┅ &lt;/font&gt;инфраструктура" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="1290" width="480" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Связи: внешний трафик (красный) ===== -->
+        <mxCell id="e_users" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;" edge="1" parent="1" source="users" target="sg"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_le" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;exitX=1;exitY=0.5;entryX=0.5;entryY=1;" edge="1" parent="1" source="le" target="sg"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_sg" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;" edge="1" parent="1" source="sg" target="angie"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== Angie → vhost (оранжевый) ===== -->
+        <mxCell id="e_v1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=0.2;exitY=0;" edge="1" parent="1" source="angie" target="vh_console"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=0.4;exitY=0;" edge="1" parent="1" source="angie" target="vh_static"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=0.6;exitY=0;" edge="1" parent="1" source="angie" target="vh_wp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=1;exitY=0.8;" edge="1" parent="1" source="angie" target="vh_kc"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v5" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=0.6;exitY=1;" edge="1" parent="1" source="angie" target="vh_grafana"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v6" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=0.8;exitY=1;" edge="1" parent="1" source="angie" target="vh_prom"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_v7" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;exitX=1;exitY=1;" edge="1" parent="1" source="angie" target="vh_tb"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="860" y="730" /><mxPoint x="860" y="1410" /></Array></mxGeometry></mxCell>
+
+        <!-- ===== vhost → бэкенд (оранжевый) ===== -->
+        <mxCell id="e_b1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_console" target="console"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_static" target="static"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_wp" target="wp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;entryX=0;entryY=0.5;" edge="1" parent="1" source="vh_kc" target="kc1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1220" y="765" /><mxPoint x="1220" y="735" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_b5" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;entryX=0;entryY=0.5;" edge="1" parent="1" source="vh_kc" target="kc2"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1220" y="765" /><mxPoint x="1220" y="875" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_b6" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_grafana" target="grafana"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b7" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_prom" target="prom"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b8" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="vh_tb" target="tb"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== Базы данных (синий) ===== -->
+        <mxCell id="e_db1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="wp" target="mysql"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_db2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="mexp" target="mysql"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_db3" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;exitX=1;exitY=0.3;entryX=0.5;entryY=0;" edge="1" parent="1" source="kc1" target="pg"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1970" y="721" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_db4" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;exitX=1;exitY=0.7;entryX=0.5;entryY=1;" edge="1" parent="1" source="kc2" target="pg"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1970" y="889" /></Array></mxGeometry></mxCell>
+
+        <!-- ===== Кластер Keycloak (фиолетовый) ===== -->
+        <mxCell id="e_jg1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7f00ff;startArrow=classic;exitX=1;exitY=0.7;entryX=0;entryY=0.3;" edge="1" parent="1" source="kc1" target="jg"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_jg2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7f00ff;startArrow=classic;exitX=1;exitY=0.3;entryX=0;entryY=0.7;" edge="1" parent="1" source="kc2" target="jg"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_jg3" value="таблица jgroups_ping" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7f00ff;dashed=1;fontSize=10;" edge="1" parent="1" source="jg" target="pg"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== Метрики (зелёный, пунктир) ===== -->
+        <mxCell id="e_m1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;" edge="1" parent="1" source="prom" target="pexp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m2" value="mysqld" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=1;exitY=0.25;entryX=0.5;entryY=1;" edge="1" parent="1" source="prom" target="mexp"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2130" y="1157" /><mxPoint x="2130" y="580" /><mxPoint x="1970" y="580" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m3" value="keycloak :9011/:9012" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.8;exitY=0;entryX=0.8;entryY=1;" edge="1" parent="1" source="prom" target="net_kc"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m4" value="node_exporter" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.3;exitY=1;entryX=0.7;entryY=1;" edge="1" parent="1" source="prom" target="hostsvc"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1359" y="1300" /><mxPoint x="700" y="1300" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m5" value="angie :8079/metrics" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.1;exitY=1;entryX=0;entryY=0.8;" edge="1" parent="1" source="prom" target="angie"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1313" y="1330" /><mxPoint x="470" y="1330" /><mxPoint x="470" y="696" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m6" value="datasource" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;fontSize=10;" edge="1" parent="1" source="grafana" target="prom"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ===== OAuth (розовый, пунктир) ===== -->
+        <mxCell id="e_oauth" value="token / userinfo через локальный Angie (/etc/hosts)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#e3008c;dashed=1;fontSize=10;exitX=1;exitY=0.3;entryX=0.5;entryY=1;" edge="1" parent="1" source="grafana" target="vh_kc"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1560" y="1012" /><mxPoint x="1560" y="960" /><mxPoint x="1025" y="960" /></Array></mxGeometry></mxCell>
+
+        <!-- ===== Инфраструктура (серый, пунктир) ===== -->
+        <mxCell id="e_state" value="state" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;fontSize=10;" edge="1" parent="1" source="admin" target="s3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_dns" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;" edge="1" parent="1" source="dns" target="ip"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_ip" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="ip" target="vm"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

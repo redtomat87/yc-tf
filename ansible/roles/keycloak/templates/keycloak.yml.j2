@@ -60,20 +60,26 @@ spec:
         - containerPort: 8080
         - containerPort: 9000
       # В образе нет curl, а httpGet-пробу Podman превращает в curl. Проверяем /health/ready
-      # на management-порту средствами bash.
-      livenessProbe:
+      # на management-порту средствами bash. Пока идёт старт (startupProbe, до 10 минут),
+      # liveness не проверяется.
+      startupProbe:
         exec:
-          command:
+          command: &keycloak_ready
             - bash
             - -c
             - >-
               exec 3<>/dev/tcp/127.0.0.1/9000 &&
               printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
               head -1 <&3 | grep -q ' 200 '
-        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 60
+      livenessProbe:
+        exec:
+          command: *keycloak_ready
         periodSeconds: 15
         timeoutSeconds: 5
-        failureThreshold: 6
+        failureThreshold: 4
       resources:
         limits:
           memory: {{ keycloak_memory_limit }}

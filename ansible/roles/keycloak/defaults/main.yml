@@ -18,11 +18,15 @@ keycloak_memory_limit: 768Mi
 keycloak_replicas: 2
 
 # Realm для входа в Grafana: клиент grafana, роль grafana-admin даёт роль Admin в Grafana.
+# Импортируется при первом старте; realm, который уже есть, при импорте не меняется.
 keycloak_realm: grafana
 keycloak_grafana_url: "https://{{ angie_vhosts.grafana.server_name }}"
 keycloak_grafana_client_secret: "{{ vault_grafana_oauth_client_secret }}"
 keycloak_realm_users:
+  # Без имени и фамилии профиль неполный, и Keycloak просит заполнить его при входе.
   - username: admin
+    first_name: Grafana
+    last_name: Admin
     email: "admin@{{ site_domain }}"
     password: "{{ vault_grafana_admin_password }}"
     realm_roles: [grafana-admin]

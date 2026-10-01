@@ -2,6 +2,8 @@
 {%- for user in keycloak_realm_users -%}
 {%-   set _ = users.append({
         'username': user.username,
+        'firstName': user.first_name,
+        'lastName': user.last_name,
         'email': user.email,
         'emailVerified': true,
         'enabled': true,

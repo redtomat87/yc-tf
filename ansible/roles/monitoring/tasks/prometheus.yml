@@ -1,0 +1,20 @@
+---
+- name: Deploy Prometheus
+  tags: [config, monitoring_config]
+  block:
+    - name: Render Prometheus manifest
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: /etc/containers/systemd/prometheus.yml
+        owner: root
+        group: root
+        mode: "0644"
+      register: monitoring_prometheus_manifest
+
+    - name: Run Prometheus pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: prometheus
+        podman_kube_description: Prometheus
+        podman_kube_manifest_changed: "{{ monitoring_prometheus_manifest is changed }}"

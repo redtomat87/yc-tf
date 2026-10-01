@@ -1,0 +1,33 @@
+---
+- name: Deploy Grafana
+  tags: [config, monitoring_config]
+  block:
+    # Grafana в сети хоста ходит к Keycloak за токеном через Angie: по адресу web-хоста
+    # (127.0.0.1, если Angie здесь же), а не по публичному адресу — на hairpin через NAT
+    # облака полагаться нельзя.
+    - name: Resolve Keycloak host to Angie
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^\S+\s+{{ monitoring_keycloak_host | regex_escape }}$'
+        line: "{{ peer_addr[groups['web'][0]] }} {{ monitoring_keycloak_host }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # 0600: в манифесте Secret с паролями (base64 — не шифрование).
+    - name: Render Grafana manifest
+      ansible.builtin.template:
+        src: grafana.yml.j2
+        dest: /etc/containers/systemd/grafana.yml
+        owner: root
+        group: root
+        mode: "0600"
+      register: monitoring_grafana_manifest
+
+    - name: Run Grafana pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: grafana
+        podman_kube_description: Grafana
+        podman_kube_manifest_changed: "{{ monitoring_grafana_manifest is changed }}"

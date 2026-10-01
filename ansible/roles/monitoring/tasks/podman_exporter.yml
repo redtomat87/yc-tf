@@ -1,0 +1,21 @@
+---
+- name: Deploy podman-exporter
+  tags: [config, monitoring_config]
+  block:
+    - name: Render podman-exporter manifest
+      ansible.builtin.template:
+        src: podman-exporter.yml.j2
+        dest: /etc/containers/systemd/podman-exporter.yml
+        owner: root
+        group: root
+        mode: "0644"
+      register: monitoring_exporter_manifest
+
+    - name: Run podman-exporter pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: podman-exporter
+        podman_kube_description: Prometheus exporter for Podman
+        podman_kube_userns: host
+        podman_kube_manifest_changed: "{{ monitoring_exporter_manifest is changed }}"

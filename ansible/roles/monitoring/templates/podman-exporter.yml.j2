@@ -15,6 +15,10 @@ spec:
       image: {{ monitoring_podman_exporter_image }}
       args:
         - --web.listen-address=127.0.0.1:{{ app_ports.podman_exporter }}
+{% if remote_consumers.prometheus %}
+        # Prometheus на другой ВМ
+        - --web.listen-address={{ private_ip }}:{{ app_ports.podman_exporter }}
+{% endif %}
         - --collector.enable-all
         # Метка name у всех метрик: дашборду не нужно джойнить с podman_container_info.
         - --collector.enhance-metrics

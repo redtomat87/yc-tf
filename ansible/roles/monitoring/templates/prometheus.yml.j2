@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
-# Prometheus в сети хоста: экспортеры (node, Angie, Keycloak, MySQL, Podman) слушают
-# только 127.0.0.1, из bridge-сети их не видно. Сам Prometheus тоже слушает 127.0.0.1,
-# снаружи — через Angie (/prometheus под basic auth).
+# Prometheus в сети хоста: экспортеры на этой же ВМ слушают только 127.0.0.1, из
+# bridge-сети их не видно. Сам Prometheus слушает 127.0.0.1 и, если Angie или Grafana
+# на другой ВМ, частный IP; снаружи — через Angie (/prometheus под basic auth).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,6 +36,9 @@ spec:
         - --storage.tsdb.path=/prometheus
         - --storage.tsdb.retention.time={{ monitoring_prometheus_retention }}
         - --web.listen-address=127.0.0.1:{{ app_ports.prometheus }}
+{% if remote_consumers.web or remote_consumers.grafana %}
+        - --web.listen-address={{ private_ip }}:{{ app_ports.prometheus }}
+{% endif %}
         - --web.external-url={{ monitoring_grafana_url }}/prometheus
         - --web.route-prefix=/prometheus
       # В образе только wget, а httpGet-пробу Podman выполняет через curl.

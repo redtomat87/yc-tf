@@ -3,32 +3,46 @@ global:
   scrape_timeout: 10s
   evaluation_interval: 15s
 
-# Pod monitoring в сети хоста: все экспортеры доступны на 127.0.0.1.
+# Цели — по группам inventory: на этой ВМ через 127.0.0.1, на других — по частному IP.
+# Метка instance — имя ВМ в inventory, а не адрес.
 scrape_configs:
   - job_name: prometheus
     metrics_path: /prometheus/metrics
     static_configs:
       - targets: ["127.0.0.1:{{ app_ports.prometheus }}"]
+        labels: { instance: "{{ inventory_hostname }}" }
 
   - job_name: node-exporter
     static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.node_exporter }}"]
+{% for host in groups['all'] %}
+      - targets: ["{{ peer_addr[host] }}:{{ app_ports.node_exporter }}"]
+        labels: { instance: "{{ host }}" }
+{% endfor %}
+
+  - job_name: podman
+    static_configs:
+{% for host in container_hosts %}
+      - targets: ["{{ peer_addr[host] }}:{{ app_ports.podman_exporter }}"]
+        labels: { instance: "{{ host }}" }
+{% endfor %}
 
   - job_name: angie
     static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.angie_status }}"]
+{% for host in groups['web'] | default([]) %}
+      - targets: ["{{ peer_addr[host] }}:{{ app_ports.angie_status }}"]
+        labels: { instance: "{{ host }}" }
+{% endfor %}
 
   - job_name: keycloak
     static_configs:
-      - targets:
-{% for port in app_ports.keycloak_management %}
-          - "127.0.0.1:{{ port }}"
+{% for kc in keycloak_instances %}
+      - targets: ["{{ peer_addr[kc.host] }}:{{ kc.management_port }}"]
+        labels: { instance: "{{ kc.host }}", replica: "keycloak-{{ kc.id }}" }
 {% endfor %}
 
   - job_name: mysqld-exporter
     static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.mysqld_exporter }}"]
-
-  - job_name: podman
-    static_configs:
-      - targets: ["127.0.0.1:{{ app_ports.podman_exporter }}"]
+{% for host in groups['wordpress'] | default([]) %}
+      - targets: ["{{ peer_addr[host] }}:{{ app_ports.mysqld_exporter }}"]
+        labels: { instance: "{{ host }}" }
+{% endfor %}

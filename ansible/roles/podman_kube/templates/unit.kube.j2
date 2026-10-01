@@ -1,0 +1,28 @@
+# {{ ansible_managed }}
+# Quadlet: systemd генерирует из этого файла {{ podman_kube_name }}.service.
+[Unit]
+Description={{ podman_kube_description }}
+Wants=network-online.target
+After=network-online.target{% for unit in podman_kube_requires %} {{ unit }}{% endfor %}
+
+{% if podman_kube_requires %}
+Requires={{ podman_kube_requires | join(' ') }}
+{% endif %}
+
+[Kube]
+Yaml={{ podman_kube_name }}.yml
+{% if podman_kube_network %}
+Network={{ podman_kube_network }}
+{% endif %}
+{% for port in podman_kube_publish %}
+PublishPort={{ port }}
+{% endfor %}
+UserNS={{ podman_kube_userns }}
+
+[Service]
+# Первый запуск тянет образы.
+TimeoutStartSec=900
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

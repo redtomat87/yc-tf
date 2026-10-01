@@ -1,0 +1,48 @@
+---
+- name: Unit name must be set
+  ansible.builtin.assert:
+    that: podman_kube_name | length > 0
+    fail_msg: podman_kube_name не задан
+
+- name: "Render Quadlet unit {{ podman_kube_name }}.kube"
+  ansible.builtin.template:
+    src: unit.kube.j2
+    dest: "{{ podman_kube_dir }}/{{ podman_kube_name }}.kube"
+    owner: root
+    group: root
+    mode: "0644"
+  register: podman_kube_unit
+
+# Генератор Quadlet срабатывает на daemon-reload; без него systemd не знает о новом юните.
+- name: Reload systemd to regenerate Quadlet units  # noqa: no-handler -- юнит нужен сразу, следующей задаче
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: podman_kube_unit is changed
+
+# Сгенерированные Quadlet-юниты нельзя enable: автозапуск задаёт [Install] в .kube.
+- name: "Restart {{ podman_kube_name }} after changes"
+  ansible.builtin.systemd_service:
+    name: "{{ podman_kube_name }}.service"
+    state: restarted
+  when: podman_kube_unit is changed or podman_kube_manifest_changed | bool
+
+- name: "Start {{ podman_kube_name }}"
+  ansible.builtin.systemd_service:
+    name: "{{ podman_kube_name }}.service"
+    state: started
+
+# Состояние каждого контейнера pod'а: running, а если есть healthcheck — healthy.
+- name: "Wait for {{ podman_kube_name }} containers"
+  ansible.builtin.command:
+    cmd: >-
+      podman ps --all
+      --filter label=PODMAN_SYSTEMD_UNIT={{ podman_kube_name }}.service
+      --format '{{ '{{' }}.State{{ '}}' }}|{{ '{{' }}.Status{{ '}}' }}|{{ '{{' }}.Names{{ '}}' }}'
+  register: podman_kube_ps
+  changed_when: false
+  until: >-
+    podman_kube_ps.stdout_lines | length > 0 and
+    podman_kube_ps.stdout_lines | reject('match', '^running\|') | list | length == 0 and
+    podman_kube_ps.stdout_lines | select('search', '\((starting|unhealthy)\)') | list | length == 0
+  retries: "{{ podman_kube_wait_retries }}"
+  delay: "{{ podman_kube_wait_delay }}"

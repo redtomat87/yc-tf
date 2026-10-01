@@ -1,0 +1,26 @@
+---
+# Общий механизм запуска Kubernetes YAML через Quadlet (.kube). Вызывается из
+# прикладных ролей через include_role; манифест <name>.yml кладёт сама прикладная роль.
+#
+#   podman_kube_name: имя юнита: /etc/containers/systemd/<name>.kube -> <name>.service
+#   podman_kube_manifest_changed: менялся ли манифест (register прикладной роли)
+podman_kube_name: ""
+podman_kube_manifest_changed: false
+podman_kube_description: "{{ podman_kube_name }}"
+
+# Порты публикуются здесь, а не hostPort в YAML: манифест остаётся пригодным для Kubernetes.
+# ["127.0.0.1:8090:80", ...]
+podman_kube_publish: []
+# Сеть Quadlet (<name>.network) или "host"; пусто — сеть podman по умолчанию.
+podman_kube_network: ""
+# auto: свой диапазон UID/GID на pod, root в контейнере не root на хосте.
+# host — только для того, кому нужен root хоста (podman-exporter и сокет Podman).
+podman_kube_userns: auto
+# Юниты, которые должны быть запущены раньше: ["keycloak-postgres.service"]
+podman_kube_requires: []
+
+# Ожидание: все контейнеры pod'а running, а с healthcheck — healthy.
+podman_kube_wait_retries: 60
+podman_kube_wait_delay: 5
+
+podman_kube_dir: /etc/containers/systemd

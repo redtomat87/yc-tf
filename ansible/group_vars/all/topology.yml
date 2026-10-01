@@ -1,0 +1,50 @@
+---
+# Где какие сервисы. Каждый сервис — группа inventory (ansible_groups ВМ в terraform.tfvars):
+#   web           Angie и статика; на эту ВМ указывают DNS-записи
+#   wordpress     WordPress + MySQL + mysqld_exporter
+#   keycloak      реплики Keycloak
+#   keycloak_db   PostgreSQL для Keycloak
+#   prometheus, grafana, test_backends
+# Сервисы могут жить на одной ВМ или на разных: адреса друг друга берут отсюда.
+
+# Частный адрес ВМ. Terraform пишет его в inventory; без этого — из фактов.
+private_ip: "{{ ansible_facts.default_ipv4.address }}"
+
+# Адрес хоста с точки зрения текущего: 127.0.0.1 для себя, частный IP для остальных.
+#   peer_addr[groups.wordpress[0]]
+peer_addr: >-
+  {{ dict(groups['all'] | zip(groups['all'] | map('extract', hostvars, 'private_ip')))
+     | combine({inventory_hostname: '127.0.0.1'}) }}
+
+# Есть ли в группе хосты, кроме текущего: тогда сервис текущего хоста, который нужен
+# этой группе, публикуется ещё и на частном IP. Иначе — только на 127.0.0.1.
+#   remote_consumers.web
+remote_consumers: >-
+  {%- set out = {} -%}
+  {%- for group in service_groups + ['all'] -%}
+  {%-   set _ = out.update({group: groups[group] | default([]) | difference([inventory_hostname]) | length > 0}) -%}
+  {%- endfor -%}
+  {{ out }}
+
+service_groups: [web, wordpress, keycloak, keycloak_db, prometheus, grafana, test_backends]
+# Хосты, где нужен Podman.
+container_groups: [wordpress, keycloak, keycloak_db, prometheus, grafana, test_backends]
+container_hosts: >-
+  {{ container_groups | map('extract', groups) | select('defined') | flatten | unique | list }}
+
+# Реплики Keycloak: на одной ВМ — keycloak_replicas_single_host штук, на нескольких —
+# по одной на ВМ. Порты реплики — по её номеру из app_ports.
+keycloak_replicas_single_host: 2
+keycloak_instances: >-
+  {%- set hosts = groups['keycloak'] | default([]) -%}
+  {%- set out = [] -%}
+  {%- for i in range(keycloak_replicas_single_host if hosts | length == 1 else hosts | length) -%}
+  {%-   set _ = out.append({
+          'id': i + 1,
+          'host': hosts[0] if hosts | length == 1 else hosts[i],
+          'http_port': app_ports.keycloak[i],
+          'management_port': app_ports.keycloak_management[i],
+          'jgroups_port': app_ports.keycloak_jgroups[i],
+        }) -%}
+  {%- endfor -%}
+  {{ out }}

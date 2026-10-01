@@ -4,15 +4,19 @@
 
 site_domain: redtomat.ru
 
-# --- Порты на 127.0.0.1 --------------------------------------------
-# Всё, кроме 22/80/443, слушает только loopback; Angie проксирует сюда.
+# --- Порты сервисов ------------------------------------------------
+# Всё, кроме 22/80/443, слушает 127.0.0.1, а если потребитель на другой ВМ — ещё и
+# частный IP (topology.yml). Снаружи — только через Angie.
 app_ports:
   angie_status: 8079
   node_exporter: 9100
   wordpress: 8090
   mysqld_exporter: 9104
-  keycloak: [8081, 8082]
-  keycloak_management: [9011, 9012]
+  keycloak_db: 5432
+  # По номеру реплики (topology.yml: keycloak_instances).
+  keycloak: [8081, 8082, 8083, 8084]
+  keycloak_management: [9011, 9012, 9013, 9014]
+  keycloak_jgroups: [7801, 7802, 7803, 7804]
   grafana: 3000
   prometheus: 9090
   podman_exporter: 9882
@@ -32,15 +36,18 @@ podman_userns_slots:
   test-backend-3: 8
   test-backend-4: 9
   grafana: 10
+  keycloak-3: 11
+  keycloak-4: 12
 
 # --- Angie ---------------------------------------------------------
+# group — группа inventory с бэкендом: без хостов в ней vhost не создаётся.
 angie_vhosts:
   console: { order: 10, server_name: "angie.{{ site_domain }}" }
   static: { order: 20, server_name: "static.{{ site_domain }}" }
-  wordpress: { order: 30, server_name: "daily.{{ site_domain }}" }
-  grafana: { order: 40, server_name: "grafana.{{ site_domain }}" }
-  keycloak: { order: 50, server_name: "auth.{{ site_domain }}" }
-  test_backends: { order: 60, server_name: "angie-backend.{{ site_domain }}" }
+  wordpress: { order: 30, server_name: "daily.{{ site_domain }}", group: wordpress }
+  grafana: { order: 40, server_name: "grafana.{{ site_domain }}", group: grafana }
+  keycloak: { order: 50, server_name: "auth.{{ site_domain }}", group: keycloak }
+  test_backends: { order: 60, server_name: "angie-backend.{{ site_domain }}", group: test_backends }
 
 # Копия /var/lib/angie/acme на контроллере: снимает acme-backup.yml, доливает роль angie.
 angie_acme_local_backup: "{{ playbook_dir }}/files/acme-backup"

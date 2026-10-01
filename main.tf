@@ -25,10 +25,9 @@ module "compute_instance" {
 module "dns" {
   source = "./tf_modules/dns_recordsets"
 
-  vm                   = local.vm_with_labels
-  zone_id              = yandex_dns_zone.redtomat-ru.id
-  vm_ips               = module.compute_instance.vm_ips
-  zone_of_availability = var.zone_of_availability
+  vm      = local.vm_with_labels
+  zone_id = yandex_dns_zone.redtomat-ru.id
+  vm_ips  = module.compute_instance.vm_ips
 }
 
 module "ansible_inventory" {

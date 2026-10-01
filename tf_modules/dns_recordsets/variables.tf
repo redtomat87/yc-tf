@@ -12,7 +12,3 @@ variable "zone_id" {
 variable "vm_ips" {
   type = list(string)
 }
-
-variable "zone_of_availability" {
-  type = string
-}

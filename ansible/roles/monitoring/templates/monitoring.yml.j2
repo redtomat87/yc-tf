@@ -1,0 +1,213 @@
+# {{ ansible_managed }}
+# Prometheus и Grafana в сети хоста: экспортеры (node, Angie, Keycloak, MySQL, Podman)
+# слушают только 127.0.0.1, из bridge-сети их не видно. Сами Prometheus и Grafana тоже
+# слушают 127.0.0.1, снаружи — через Angie.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: monitoring-secrets
+type: Opaque
+data:
+  grafana-admin-password: {{ monitoring_grafana_admin_password | b64encode }}
+  oauth-client-secret: {{ monitoring_oauth_client_secret | b64encode }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: {{ lookup('ansible.builtin.template', 'prometheus.yml.j2') | to_json }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+data:
+  datasources.yml: {{ {
+      'apiVersion': 1,
+      'datasources': [{
+        'name': 'Prometheus',
+        'uid': 'prometheus',
+        'type': 'prometheus',
+        'access': 'proxy',
+        'url': 'http://127.0.0.1:' ~ app_ports.prometheus ~ '/prometheus',
+        'isDefault': true,
+      }],
+    } | to_nice_yaml | to_json }}
+  dashboards.yml: {{ {
+      'apiVersion': 1,
+      'providers': [{
+        'name': 'dashboards',
+        'type': 'file',
+        'allowUiUpdates': false,
+        'options': {'path': '/etc/grafana/dashboards', 'foldersFromFilesStructure': true},
+      }],
+    } | to_nice_yaml | to_json }}
+{% for dashboard in monitoring_dashboards %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-{{ dashboard }}
+data:
+  {{ dashboard }}.json: {{ lookup('ansible.builtin.file', 'dashboards/' ~ dashboard ~ '.json') | to_json }}
+{% endfor %}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: monitoring
+  labels:
+    app: monitoring
+spec:
+  # Вызовы Grafana к Keycloak (token, userinfo) идут в локальный Angie через запись
+  # в /etc/hosts хоста (задача роли): с hostNetwork hostAliases не применяются
+  # ни в Podman, ни в Kubernetes.
+  hostNetwork: true
+  containers:
+    - name: prometheus
+      image: {{ monitoring_prometheus_image }}
+      args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time={{ monitoring_prometheus_retention }}
+        - --web.listen-address=127.0.0.1:{{ app_ports.prometheus }}
+        - --web.external-url={{ monitoring_grafana_url }}/prometheus
+        - --web.route-prefix=/prometheus
+      # В образе только wget, а httpGet-пробу Podman выполняет через curl.
+      livenessProbe:
+        exec:
+          command: [wget, -q, -O, /dev/null, "http://127.0.0.1:{{ app_ports.prometheus }}/prometheus/-/ready"]
+        initialDelaySeconds: 10
+        periodSeconds: 15
+      resources:
+        limits:
+          memory: {{ monitoring_prometheus_memory_limit }}
+      volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+          readOnly: true
+        - name: prometheus-data
+          mountPath: /prometheus
+
+    - name: grafana
+      image: {{ monitoring_grafana_image }}
+      env:
+        - name: GF_SERVER_HTTP_ADDR
+          value: 127.0.0.1
+        - name: GF_SERVER_HTTP_PORT
+          value: "{{ app_ports.grafana }}"
+        - name: GF_SERVER_ROOT_URL
+          value: {{ monitoring_grafana_url }}
+        - name: GF_LOG_LEVEL
+          value: {{ monitoring_grafana_log_level }}
+        - name: GF_PATHS_PROVISIONING
+          value: /etc/grafana/provisioning
+        - name: GF_SECURITY_ADMIN_USER
+          value: admin
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom: { secretKeyRef: { name: monitoring-secrets, key: grafana-admin-password } }
+        - name: GF_ANALYTICS_REPORTING_ENABLED
+          value: "false"
+        # Вход только через Keycloak.
+        - name: GF_AUTH_DISABLE_LOGIN_FORM
+          value: "true"
+        - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+          value: "true"
+        - name: GF_AUTH_GENERIC_OAUTH_NAME
+          value: Keycloak
+        - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+          value: grafana
+        - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+          valueFrom: { secretKeyRef: { name: monitoring-secrets, key: oauth-client-secret } }
+        - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+          value: openid email profile
+        - name: GF_AUTH_GENERIC_OAUTH_USE_PKCE
+          value: "true"
+        - name: GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP
+          value: "true"
+        - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+          value: https://{{ monitoring_keycloak_host }}/realms/{{ monitoring_keycloak_realm }}/protocol/openid-connect/auth
+        - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+          value: https://{{ monitoring_keycloak_host }}/realms/{{ monitoring_keycloak_realm }}/protocol/openid-connect/token
+        - name: GF_AUTH_GENERIC_OAUTH_API_URL
+          value: https://{{ monitoring_keycloak_host }}/realms/{{ monitoring_keycloak_realm }}/protocol/openid-connect/userinfo
+        - name: GF_AUTH_SIGNOUT_REDIRECT_URL
+          value: https://{{ monitoring_keycloak_host }}/realms/{{ monitoring_keycloak_realm }}/protocol/openid-connect/logout?client_id=grafana&post_logout_redirect_uri={{ monitoring_grafana_url | urlencode }}%2Flogin
+        # Роль grafana-admin из realm (claim roles) — Admin, остальные — Viewer.
+        - name: GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH
+          value: "contains(roles[*], 'grafana-admin') && 'Admin' || 'Viewer'"
+      ports:
+        - containerPort: {{ app_ports.grafana }}
+      # Первый старт с миграциями БД на слабой ВМ занимает минуты: до готовности
+      # liveness не проверяется, иначе контейнер убивают посреди миграции.
+      startupProbe:
+        httpGet:
+          path: /api/health
+          port: {{ app_ports.grafana }}
+        periodSeconds: 10
+        failureThreshold: 60
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: {{ app_ports.grafana }}
+        periodSeconds: 15
+        failureThreshold: 4
+      resources:
+        limits:
+          memory: {{ monitoring_grafana_memory_limit }}
+      volumeMounts:
+        - name: grafana-data
+          mountPath: /var/lib/grafana
+        - name: grafana-provisioning
+          mountPath: /etc/grafana/provisioning/datasources/datasources.yml
+          subPath: datasources.yml
+          readOnly: true
+        - name: grafana-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
+          subPath: dashboards.yml
+          readOnly: true
+{% for dashboard in monitoring_dashboards %}
+        - name: dashboard-{{ dashboard }}
+          mountPath: /etc/grafana/dashboards/{{ dashboard }}
+          readOnly: true
+{% endfor %}
+
+  volumes:
+    - name: prometheus-config
+      configMap:
+        name: prometheus-config
+    - name: prometheus-data
+      persistentVolumeClaim:
+        claimName: prometheus-data
+    - name: grafana-data
+      persistentVolumeClaim:
+        claimName: grafana-data
+    - name: grafana-provisioning
+      configMap:
+        name: grafana-provisioning
+{% for dashboard in monitoring_dashboards %}
+    - name: dashboard-{{ dashboard }}
+      configMap:
+        name: grafana-dashboard-{{ dashboard }}
+{% endfor %}

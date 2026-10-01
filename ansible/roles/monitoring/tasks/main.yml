@@ -1,0 +1,50 @@
+---
+- name: Deploy monitoring
+  tags: [config, monitoring_config]
+  block:
+    - name: Render podman-exporter manifest
+      ansible.builtin.template:
+        src: podman-exporter.yml.j2
+        dest: /etc/containers/systemd/podman-exporter.yml
+        owner: root
+        group: root
+        mode: "0644"
+      register: monitoring_exporter_manifest
+
+    - name: Run podman-exporter pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: podman-exporter
+        podman_kube_description: Prometheus exporter for Podman
+        podman_kube_userns: host
+        podman_kube_manifest_changed: "{{ monitoring_exporter_manifest is changed }}"
+
+    # Grafana в сети хоста ходит к Keycloak за токеном. Без этой записи запрос шёл бы
+    # на публичный адрес ВМ, а на hairpin через NAT облака полагаться нельзя.
+    - name: Resolve Keycloak host to the local Angie
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1\s+{{ monitoring_keycloak_host | regex_escape }}$'
+        line: "127.0.0.1 {{ monitoring_keycloak_host }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+    # 0600: в манифесте Secret с паролями (base64 — не шифрование).
+    - name: Render monitoring manifest
+      ansible.builtin.template:
+        src: monitoring.yml.j2
+        dest: /etc/containers/systemd/monitoring.yml
+        owner: root
+        group: root
+        mode: "0600"
+      register: monitoring_manifest
+
+    - name: Run monitoring pod
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: monitoring
+        podman_kube_description: Prometheus and Grafana
+        podman_kube_manifest_changed: "{{ monitoring_manifest is changed }}"

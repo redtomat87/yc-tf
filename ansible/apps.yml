@@ -9,5 +9,7 @@
       tags: [wordpress]
     - role: keycloak
       tags: [keycloak]
+    - role: monitoring
+      tags: [monitoring]
     - role: test_backends
       tags: [test_backends]

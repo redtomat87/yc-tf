@@ -1,0 +1,36 @@
+# {{ ansible_managed }}
+# Метрики контейнеров через API Podman. Отдельный pod с UserNS=host: сокет Podman
+# принадлежит root хоста, а доступ к нему и так равен root на хосте.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podman-exporter
+  labels:
+    app: monitoring
+    component: podman-exporter
+spec:
+  hostNetwork: true
+  containers:
+    - name: exporter
+      image: {{ monitoring_podman_exporter_image }}
+      args:
+        - --web.listen-address=127.0.0.1:{{ app_ports.podman_exporter }}
+        - --collector.enable-all
+        # Метка name у всех метрик: дашборду не нужно джойнить с podman_container_info.
+        - --collector.enhance-metrics
+      env:
+        - name: CONTAINER_HOST
+          value: unix:///run/podman/podman.sock
+      securityContext:
+        runAsUser: 0
+      resources:
+        limits:
+          memory: 128Mi
+      volumeMounts:
+        - name: podman-socket
+          mountPath: /run/podman/podman.sock
+  volumes:
+    - name: podman-socket
+      hostPath:
+        path: /run/podman/podman.sock
+        type: Socket

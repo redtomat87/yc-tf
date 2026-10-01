@@ -1,0 +1,22 @@
+---
+monitoring_prometheus_image: docker.io/prom/prometheus:v3.15.0
+monitoring_grafana_image: docker.io/grafana/grafana:13.2.3
+monitoring_podman_exporter_image: quay.io/navidys/prometheus-podman-exporter:v2.0.0
+
+monitoring_grafana_url: "https://{{ angie_vhosts.grafana.server_name }}"
+monitoring_prometheus_retention: 14d
+
+monitoring_grafana_admin_password: "{{ vault_grafana_admin_password }}"
+monitoring_grafana_log_level: info
+
+# Вход в Grafana через Keycloak (роль keycloak): клиент grafana в realm keycloak_realm.
+monitoring_keycloak_host: "{{ angie_vhosts.keycloak.server_name }}"
+monitoring_keycloak_realm: grafana
+monitoring_oauth_client_secret: "{{ vault_grafana_oauth_client_secret }}"
+
+monitoring_prometheus_memory_limit: 512Mi
+# Grafana 13 при 256Mi уходит в сборку мусора и не дожидается конца миграций.
+monitoring_grafana_memory_limit: 512Mi
+
+# Дашборды из files/dashboards/<name>.json, каждый в своём ConfigMap (лимит Kubernetes — 1 MiB).
+monitoring_dashboards: [angie, keycloak, mysql, node-exporter, podman]

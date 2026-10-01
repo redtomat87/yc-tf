@@ -10,7 +10,7 @@
   tags: [verify]
   vars:
     # Порты, которые законно слушают не только loopback: SSH и веб — на всех адресах,
-    # экспортеры и Prometheus — на частном IP, если их потребитель на другой ВМ.
+    # экспортеры, Prometheus и Grafana — на частном IP, если их потребитель на другой ВМ.
     verify_public_ports: [22, 80, 443]
     verify_private_ports: >-
       {{ ([app_ports.node_exporter, app_ports.podman_exporter] if remote_consumers.prometheus else [])

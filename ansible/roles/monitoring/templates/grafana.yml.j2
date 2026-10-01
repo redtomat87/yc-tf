@@ -69,10 +69,9 @@ spec:
     - name: grafana
       image: {{ monitoring_grafana_image }}
       env:
-        # Адрес у Grafana один: если Angie на другой ВМ — все интерфейсы
-        # (снаружи порт закрыт security group).
+        # Адрес у Grafana один, а потребитель тоже один — Angie: на этой ВМ или на другой.
         - name: GF_SERVER_HTTP_ADDR
-          value: "{{ '0.0.0.0' if remote_consumers.web else '127.0.0.1' }}"
+          value: "{{ monitoring_grafana_listen }}"
         - name: GF_SERVER_HTTP_PORT
           value: "{{ app_ports.grafana }}"
         - name: GF_SERVER_ROOT_URL
@@ -121,12 +120,14 @@ spec:
       # liveness не проверяется, иначе контейнер убивают посреди миграции.
       startupProbe:
         httpGet:
+          host: {{ monitoring_grafana_listen }}
           path: /api/health
           port: {{ app_ports.grafana }}
         periodSeconds: 10
         failureThreshold: 60
       livenessProbe:
         httpGet:
+          host: {{ monitoring_grafana_listen }}
           path: /api/health
           port: {{ app_ports.grafana }}
         periodSeconds: 15

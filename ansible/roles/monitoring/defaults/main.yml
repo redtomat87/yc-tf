@@ -6,6 +6,9 @@ monitoring_podman_exporter_image: quay.io/navidys/prometheus-podman-exporter:v2.
 monitoring_grafana_url: "https://{{ angie_vhosts.grafana.server_name }}"
 monitoring_prometheus_retention: 14d
 
+# Grafana слушает один адрес: 127.0.0.1, а если Angie на другой ВМ — частный IP.
+monitoring_grafana_listen: "{{ private_ip if remote_consumers.web else '127.0.0.1' }}"
+
 monitoring_grafana_admin_password: "{{ vault_grafana_admin_password }}"
 monitoring_grafana_log_level: info
 

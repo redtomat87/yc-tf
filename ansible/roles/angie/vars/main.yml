@@ -1,0 +1,29 @@
+---
+# Включённые vhost'ы: [{name, order, server_name, ...}] по возрастанию order.
+angie_vhosts_enabled: >-
+  {%- set out = [] -%}
+  {%- for name, vhost in angie_vhosts.items() if vhost.enabled | default(true) -%}
+  {%-   set _ = out.append(vhost | combine({'name': name})) -%}
+  {%- endfor -%}
+  {{ out | sort(attribute='order') }}
+
+# Все файлы конфигурации, которыми владеет роль. По этому списку rescue откатывает
+# изменения, а очистка http.d понимает, какие файлы чужие.
+angie_config_files: >-
+  {%- set out = [
+    {'src': 'angie.conf.j2', 'dest': '/etc/angie/angie.conf', 'mode': '0644'},
+    {'src': 'snippets/headers.conf.j2', 'dest': '/etc/angie/snippets/headers.conf', 'mode': '0644'},
+    {'src': 'snippets/proxy.conf.j2', 'dest': '/etc/angie/snippets/proxy.conf', 'mode': '0644'},
+    {'src': 'htpasswd.j2', 'dest': '/etc/angie/htpasswd', 'mode': '0640', 'group': 'angie'},
+    {'src': 'http.d/default.conf.j2', 'dest': '/etc/angie/http.d/00-default.conf', 'mode': '0644'},
+    {'src': 'http.d/status.conf.j2', 'dest': '/etc/angie/http.d/99-status.conf', 'mode': '0644'},
+  ] -%}
+  {%- for vhost in angie_vhosts_enabled -%}
+  {%-   set _ = out.append({
+          'src': 'http.d/' ~ vhost.name ~ '.conf.j2',
+          'dest': '/etc/angie/http.d/%02d-%s.conf' | format(vhost.order, vhost.name),
+          'mode': '0644',
+          'vhost': vhost.name,
+        }) -%}
+  {%- endfor -%}
+  {{ out }}

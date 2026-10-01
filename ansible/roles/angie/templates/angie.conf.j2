@@ -1,0 +1,124 @@
+#=====================================================================
+# /etc/angie/angie.conf   {{ ansible_managed }}
+# Единственный основной конфиг: vhost'ы — в http.d/, общие куски — в snippets/.
+#=====================================================================
+
+user angie;
+
+load_module modules/ngx_http_brotli_filter_module.so;
+load_module modules/ngx_http_brotli_static_module.so;
+load_module modules/ngx_http_zstd_filter_module.so;
+load_module modules/ngx_http_zstd_static_module.so;
+
+worker_processes        auto;
+worker_cpu_affinity     auto;
+worker_shutdown_timeout 300;
+# systemd даёт LimitNOFILE с запасом; на соединение reverse proxy уходит два дескриптора.
+worker_rlimit_nofile    65536;
+
+error_log /var/log/angie/error.log error;
+pid       /run/angie.pid;
+
+events {
+    # Потолок слотов на воркер; клиентское соединение через proxy занимает два.
+    worker_connections {{ angie_worker_connections }};
+}
+
+http {
+    include /etc/angie/prometheus_all.conf;
+    include /etc/angie/mime.types;
+    default_type application/octet-stream;
+
+    log_format extended '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" rt="$request_time" '
+                        '"$http_user_agent" "$http_x_forwarded_for" '
+                        'h="$host" sn="$server_name" ru="$request_uri" u="$uri" '
+                        'ucs="$upstream_cache_status" ua="$upstream_addr" us="$upstream_status" '
+                        'uct="$upstream_connect_time" urt="$upstream_response_time"';
+    access_log /var/log/angie/access.log extended;
+
+    sendfile    on;
+    tcp_nopush  on;
+    tcp_nodelay on;
+    reset_timedout_connection on;
+    server_tokens off;
+
+    keepalive_timeout  75s;
+    keepalive_requests 10000;
+
+    send_timeout          20s;
+    client_body_timeout   20s;
+    client_header_timeout 20s;
+    client_max_body_size  16m;
+
+    proxy_connect_timeout 10s;
+    proxy_send_timeout    30s;
+    proxy_read_timeout    60s;
+
+    proxy_buffer_size          8k;
+    proxy_buffers           64 8k;
+    proxy_busy_buffers_size   32k;
+    proxy_temp_file_write_size 64k;
+
+    open_file_cache          max=10000 inactive=60s;
+    open_file_cache_valid    30s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors   on;
+    open_log_file_cache      max=100 inactive=60s min_uses=2;
+
+    #--- TLS ---------------------------------------------------------
+    # OCSP stapling не включён: Let's Encrypt с 2025 года не публикует OCSP.
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+    ssl_early_data            off;
+
+    #--- WebSocket (Grafana Live, консоль Keycloak) ------------------
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      '';
+    }
+
+    #--- Лимиты ------------------------------------------------------
+    limit_conn_zone $binary_remote_addr zone=addr:10m;
+    limit_req_zone  $binary_remote_addr zone=perip:10m rate={{ angie_limit_rate }};
+    limit_conn_log_level error;
+    limit_req_log_level  error;
+    limit_req_status     429;
+    limit_conn_status    429;
+
+    #--- ACME --------------------------------------------------------
+    # Пара клиентов (RSA и ECDSA) на каждый vhost: один acme_client выпускает ОДИН
+    # сертификат на все server_name ссылающихся на него server{}, и провал валидации
+    # одного имени валил бы всё. Валидация http-01 через порт 80 (00-default.conf).
+    resolver 127.0.0.53 ipv6=off;
+{% for vhost in angie_vhosts_enabled %}
+    acme_client {{ vhost.name }}_rsa   {{ angie_acme_ca }} key_type=rsa;
+    acme_client {{ vhost.name }}_ecdsa {{ angie_acme_ca }};
+{% endfor %}
+
+    #--- Сжатие ------------------------------------------------------
+    # gzip — для клиентов без br/zstd в Accept-Encoding.
+    gzip            on;
+    gzip_vary       on;
+    gzip_min_length 256;
+    gzip_comp_level 5;
+    gzip_types      text/plain text/css text/xml application/javascript
+                    application/json image/x-icon image/svg+xml;
+
+    brotli            on;
+    brotli_static     on;
+    brotli_comp_level 5;
+    brotli_types      text/plain text/css text/xml application/javascript
+                      application/json image/x-icon image/svg+xml;
+
+    zstd            on;
+    zstd_min_length 256;
+    zstd_comp_level 5;
+    zstd_types      text/plain text/css text/xml application/javascript
+                    application/json image/x-icon image/svg+xml;
+
+    include /etc/angie/http.d/*.conf;
+}

@@ -1,0 +1,7 @@
+# /etc/angie/snippets/headers.conf   {{ ansible_managed }}
+# add_header наследуется с верхнего уровня, только если на текущем своих нет. Поэтому
+# этот файл подключается и в server{}, и в каждом location, где есть свой add_header.
+add_header Strict-Transport-Security "max-age=63072000" always;
+add_header Alt-Svc 'h3=":443"; ma=86400' always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;

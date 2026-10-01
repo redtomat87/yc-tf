@@ -1,0 +1,65 @@
+---
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install Angie repository key
+  ansible.builtin.copy:
+    src: angie-signing.gpg
+    dest: /etc/apt/keyrings/angie-signing.gpg
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Read repository key fingerprint
+  ansible.builtin.command: gpg --show-keys --with-colons /etc/apt/keyrings/angie-signing.gpg
+  register: angie_key_fpr
+  changed_when: false
+
+- name: Repository key fingerprint must match
+  ansible.builtin.assert:
+    that: angie_repo_key_fpr in angie_key_fpr.stdout
+    fail_msg: >-
+      Ключ в roles/angie/files не совпадает с {{ angie_repo_key_fpr }}: ключ подменён или
+      обновлён. Сверьте с https://angie.software/keys/angie-signing.gpg
+
+- name: Add Angie repository
+  ansible.builtin.deb822_repository:
+    name: angie
+    types: [deb]
+    uris: "https://download.angie.software/angie/{{ ansible_facts.distribution | lower }}/{{ ansible_facts.distribution_version }}"
+    suites: ["{{ ansible_facts.distribution_release }}"]
+    components: [main]
+    signed_by: /etc/apt/keyrings/angie-signing.gpg
+    state: present
+  register: angie_repo
+
+# Тот же репозиторий, прописанный по-старому (apt_repository + ключ в trusted.gpg.d).
+# Ключ в trusted.gpg.d доверен всему apt, а не только этому репозиторию.
+- name: Remove legacy repository definition and key
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/download_angie_software_angie_ubuntu.list
+    - /etc/apt/sources.list.d/angie.list
+    - /etc/apt/trusted.gpg.d/angie-signing.gpg
+  register: angie_legacy_repo
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    lock_timeout: 600
+  when: angie_repo is changed or angie_legacy_repo is changed
+
+- name: Install Angie packages
+  ansible.builtin.apt:
+    name: "{{ angie_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 600

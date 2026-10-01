@@ -1,0 +1,58 @@
+---
+# --- Установка -------------------------------------------------------
+angie_packages:
+  - angie
+  - angie-module-brotli
+  - angie-module-zstd
+  - angie-console-light
+
+# Ключ: roles/angie/files/angie-signing.gpg = https://angie.software/keys/angie-signing.gpg
+angie_repo_key_fpr: EB8EAF3D4EF1B1ECF34865A2617AB978CB849A76
+
+# --- ACME ------------------------------------------------------------
+# На стенде без публичного IP — staging, чтобы не тратить лимиты Let's Encrypt.
+angie_acme_ca: https://acme-v02.api.letsencrypt.org/directory
+# Сколько раз по 10 с ждать выпуска сертификатов; 0 — не ждать.
+angie_acme_wait_retries: 30
+# Локальная копия /var/lib/angie/acme (приватные ключи!). Снимает acme-backup.yml,
+# роль доливает её на сервер, чтобы при пересоздании ВМ не выпускать сертификаты заново.
+angie_acme_local_backup: "{{ playbook_dir }}/files/acme-backup"
+
+# --- Статус и метрики ------------------------------------------------
+# Только 127.0.0.1: API статуса и /metrics для Prometheus.
+angie_status_port: "{{ app_ports.angie_status }}"
+
+# --- Лимиты ----------------------------------------------------------
+angie_worker_connections: 8192
+# delay вместо nodelay: первые angie_limit_delay запросов всплеска идут без задержки.
+angie_limit_rate: 100r/s
+angie_limit_burst: 200
+angie_limit_delay: 50
+angie_limit_conn: 256
+
+# --- Basic auth ------------------------------------------------------
+# Пользователи для /console, /prometheus и тестовых бэкендов: [{name, password}].
+angie_basic_auth_users: []
+# Постоянная соль: хэш не меняется между прогонами, и Angie не перезагружается зря.
+angie_basic_auth_salt: ""
+
+# --- Виртуальные хосты -----------------------------------------------
+# Ключ — имя шаблона templates/http.d/<ключ>.conf.j2, order — префикс файла в http.d.
+# Задаются в group_vars; пример:
+#   angie_vhosts:
+#     static: { order: 20, server_name: static.example.com }
+angie_vhosts: {}
+
+# --- AppArmor --------------------------------------------------------
+# complain — только журналировать нарушения (для отладки профиля), enforce — запрещать.
+angie_apparmor_mode: enforce
+
+# --- fail2ban --------------------------------------------------------
+# Перебор паролей basic auth: 5 ошибок за 10 минут — бан на час.
+angie_f2b_auth_findtime: 10m
+angie_f2b_auth_bantime: 1h
+angie_f2b_auth_maxretry: 5
+# Срабатывания limit_req: бан, только если клиент упирается в лимит постоянно.
+angie_f2b_limit_req_findtime: 10m
+angie_f2b_limit_req_bantime: 2h
+angie_f2b_limit_req_maxretry: 4000

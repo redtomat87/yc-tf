@@ -1,0 +1,44 @@
+---
+# Доливаем локальную копию, если она есть: при пересоздании ВМ сертификаты переносятся,
+# а не выпускаются заново (лимиты Let's Encrypt). force: false — файлы на сервере
+# не перезаписываются.
+- name: Check for a local ACME copy
+  ansible.builtin.stat:
+    path: "{{ angie_acme_local_backup }}"
+  register: angie_acme_backup_dir
+  delegate_to: localhost
+  become: false
+
+- name: Find files in the local ACME copy
+  ansible.builtin.find:
+    paths: "{{ angie_acme_local_backup }}"
+    recurse: true
+    file_type: file
+  register: angie_acme_backup_files
+  delegate_to: localhost
+  become: false
+  when: angie_acme_backup_dir.stat.isdir | default(false)
+
+- name: Create ACME client directories
+  ansible.builtin.file:
+    path: "/var/lib/angie/acme/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop: >-
+    {{ angie_acme_backup_files.files | default([])
+       | map(attribute='path') | map('relpath', angie_acme_local_backup)
+       | map('dirname') | reject('equalto', '') | unique | list }}
+
+- name: Restore ACME files
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "/var/lib/angie/acme/{{ item.path | relpath(angie_acme_local_backup) }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  loop: "{{ angie_acme_backup_files.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path | relpath(angie_acme_local_backup) }}"

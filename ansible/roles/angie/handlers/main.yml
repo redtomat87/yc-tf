@@ -1,0 +1,51 @@
+---
+# `angie -s reload` только посылает сигнал. Если новая конфигурация не применилась
+# (например, адрес занят), мастер пишет emerg в error.log и остаётся на старой,
+# а команда всё равно успешна. Поэтому сверяем generation из API статуса и, если
+# она не выросла, перезапускаем.
+- name: Read generation before reload
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ angie_status_port }}/status/angie/generation"
+    return_content: true
+    # -1: соединение отклонено. На пакетной конфигурации API нет, считаем generation нулевой.
+    status_code: [200, -1]
+  register: angie_gen_before
+  listen: Reload Angie
+
+- name: Reload Angie
+  ansible.builtin.command: angie -s reload
+  changed_when: true
+  listen: Reload Angie
+
+- name: Wait for a new generation
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ angie_status_port }}/status/angie/generation"
+    return_content: true
+    status_code: [200, -1]
+  register: angie_gen_after
+  until: >-
+    angie_gen_after.status | default(0) == 200 and
+    angie_gen_after.content | int > angie_gen_before.content | default(0) | int
+  retries: 10
+  delay: 1
+  failed_when: false
+  listen: Reload Angie
+
+- name: Restart Angie if reload did not apply
+  ansible.builtin.systemd_service:
+    name: angie
+    state: restarted
+  when: >-
+    angie_gen_after.status | default(0) != 200 or
+    angie_gen_after.content | int <= angie_gen_before.content | default(0) | int
+  listen: Reload Angie
+
+- name: Restart fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    state: restarted
+
+- name: Restart Angie
+  ansible.builtin.systemd_service:
+    name: angie
+    state: restarted

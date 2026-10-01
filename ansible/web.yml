@@ -1,0 +1,11 @@
+---
+# Angie на хосте и статический сайт. Upstream'ы приложений (apps.yml) указывают на
+# 127.0.0.1 и до их запуска отвечают 502.
+- name: Web server
+  hosts: web
+  become: true
+  roles:
+    - role: static_site
+      tags: [static_site]
+    - role: angie
+      tags: [angie]

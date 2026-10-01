@@ -1,0 +1,15 @@
+# /etc/angie/snippets/proxy.conf   {{ ansible_managed }}
+# Общие настройки проксирования на бэкенды в контейнерах (127.0.0.1).
+proxy_http_version 1.1;
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Host  $host;
+proxy_set_header X-Forwarded-Port  $server_port;
+# Пустой Connection держит keepalive к upstream, upgrade — WebSocket.
+proxy_set_header Upgrade           $http_upgrade;
+proxy_set_header Connection        $connection_upgrade;
+
+limit_req  zone=perip burst={{ angie_limit_burst }} delay={{ angie_limit_delay }};
+limit_conn addr {{ angie_limit_conn }};

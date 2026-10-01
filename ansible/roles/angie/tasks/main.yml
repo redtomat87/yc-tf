@@ -1,0 +1,12 @@
+---
+- name: Install Angie
+  ansible.builtin.import_tasks: install.yml
+  tags: [install, angie_install]
+
+- name: Restore ACME certificates from the local copy
+  ansible.builtin.import_tasks: certs.yml
+  tags: [config, angie_config, angie_certs]
+
+- name: Configure Angie
+  ansible.builtin.import_tasks: configure.yml
+  tags: [config, angie_config]

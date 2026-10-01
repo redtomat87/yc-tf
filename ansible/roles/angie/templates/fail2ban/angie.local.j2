@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+# Только отличия от пакетного jail.conf; фильтры nginx-* подходят к логам Angie как есть.
+
+[nginx-http-auth]
+enabled  = true
+port     = http,https
+backend  = auto
+logpath  = /var/log/angie/*error.log
+findtime = {{ angie_f2b_auth_findtime }}
+bantime  = {{ angie_f2b_auth_bantime }}
+maxretry = {{ angie_f2b_auth_maxretry }}
+
+[nginx-limit-req]
+enabled  = true
+port     = http,https
+backend  = auto
+logpath  = /var/log/angie/*error.log
+findtime = {{ angie_f2b_limit_req_findtime }}
+bantime  = {{ angie_f2b_limit_req_bantime }}
+maxretry = {{ angie_f2b_limit_req_maxretry }}

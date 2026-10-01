@@ -1,0 +1,169 @@
+---
+# Вся конфигурация /etc/angie создаётся только отсюда. Правки руками затираются
+# следующим прогоном, файлы в http.d, которых нет в angie_config_files, удаляются.
+
+- name: Create configuration backup directory
+  ansible.builtin.file:
+    path: /root/angie-backup
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+# Последний рубеж отката. На свежей машине это конфигурация из пакета, с ней Angie заведомо стартует.
+- name: Snapshot /etc/angie as it was before Ansible  # noqa: command-instead-of-module -- unarchive не создаёт архивы
+  ansible.builtin.command:
+    cmd: tar czf /root/angie-backup/pre-ansible.tar.gz -C /etc angie
+    creates: /root/angie-backup/pre-ansible.tar.gz
+
+- name: Create snippets directory
+  ansible.builtin.file:
+    path: /etc/angie/snippets
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy configuration with validation and rollback
+  block:
+    - name: Render configuration files
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: root
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode }}"
+        backup: true
+      loop: "{{ angie_config_files }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      register: angie_cfg
+      notify: Reload Angie
+
+    # Пакетный default.conf занимает listen 80 и default_server; файлы прошлых версий
+    # плейбуков ссылаются на удалённые upstream'ы.
+    - name: Find configuration files not managed by this role
+      ansible.builtin.find:
+        paths: /etc/angie/http.d
+        patterns: "*.conf"
+      register: angie_http_d
+
+    - name: Remove unmanaged configuration files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: >-
+        {{ angie_http_d.files | map(attribute='path')
+           | difference(angie_config_files | map(attribute='dest')) | list }}
+      notify: Reload Angie
+
+    - name: Validate configuration
+      ansible.builtin.command: angie -t
+      register: angie_test
+      changed_when: false
+
+  rescue:
+    # --- Ступень 1: вернуть предыдущие версии файлов ------------------
+    - name: Restore previous versions of changed files
+      ansible.builtin.copy:
+        src: "{{ item.backup_file }}"
+        dest: "{{ item.dest }}"
+        remote_src: true
+        owner: root
+        group: "{{ item.item.group | default('root') }}"
+        mode: "{{ item.item.mode }}"
+      loop: "{{ angie_cfg.results | default([]) | selectattr('backup_file', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.dest }}"
+
+    # Файлы, которых до прогона не было: бэкапа у них нет, их надо убрать.
+    - name: Remove files created by this run
+      ansible.builtin.file:
+        path: "{{ item.dest }}"
+        state: absent
+      loop: >-
+        {{ angie_cfg.results | default([]) | selectattr('changed')
+           | rejectattr('backup_file', 'defined') | list }}
+      loop_control:
+        label: "{{ item.dest }}"
+
+    - name: Validate configuration after rollback
+      ansible.builtin.command: angie -t
+      register: angie_test_rollback
+      changed_when: false
+      failed_when: false
+
+    # --- Ступень 2: состояние до Ansible -----------------------------
+    - name: Restore configuration as it was before Ansible
+      ansible.builtin.shell:
+        cmd: rm -rf /etc/angie && tar xzf /root/angie-backup/pre-ansible.tar.gz -C /etc
+      when: angie_test_rollback.rc != 0
+      changed_when: true
+
+    - name: Reload Angie with the restored configuration
+      ansible.builtin.systemd_service:
+        name: angie
+        state: reloaded
+      failed_when: false
+
+    - name: Stop here
+      ansible.builtin.fail:
+        msg: >-
+          Конфигурация Angie не прошла angie -t.
+          {{ 'Восстановлены предыдущие версии файлов.' if angie_test_rollback.rc == 0
+             else 'Предыдущие версии тоже невалидны: возвращено состояние до Ansible
+                   (/root/angie-backup/pre-ansible.tar.gz).' }}
+          Вывод angie -t: {{ angie_test.stderr | default(angie_test.stdout) | default('нет вывода') }}
+
+  always:
+    # Иначе резервные копии копятся рядом с конфигами при каждом изменении.
+    - name: Remove temporary backups
+      ansible.builtin.file:
+        path: "{{ item.backup_file }}"
+        state: absent
+      loop: "{{ angie_cfg.results | default([]) | selectattr('backup_file', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.backup_file }}"
+
+- name: Configure fail2ban jails for Angie
+  ansible.builtin.template:
+    src: fail2ban/angie.local.j2
+    dest: /etc/fail2ban/jail.d/angie.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start Angie
+  ansible.builtin.systemd_service:
+    name: angie
+    enabled: true
+    state: started
+
+- name: Apply configuration now
+  ansible.builtin.meta: flush_handlers
+
+# Angie создаёт certificate.pem нулевого размера как заглушку, поэтому проверяем
+# содержимое, а не наличие файла.
+- name: Wait for ACME certificates
+  ansible.builtin.command: >-
+    openssl x509 -in /var/lib/angie/acme/{{ item }}/certificate.pem -noout -checkend 0
+  loop: "{{ angie_vhosts_enabled | map(attribute='name') | product(['rsa', 'ecdsa']) | map('join', '_') | list }}"
+  register: angie_acme_wait
+  # По rc, а не по `is succeeded`: при failed_when: false попытка всегда «успешна».
+  until: angie_acme_wait.rc == 0
+  retries: "{{ angie_acme_wait_retries }}"
+  delay: 10
+  changed_when: false
+  failed_when: false
+  when: angie_acme_wait_retries | int > 0
+
+- name: Report ACME clients without a valid certificate
+  ansible.builtin.debug:
+    msg: >-
+      Нет валидного сертификата у acme_client «{{ item.item }}». Смотреть /var/log/angie/error.log и
+      curl -s http://127.0.0.1:{{ angie_status_port }}/status/http/acme_clients/
+  loop: "{{ angie_acme_wait.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.rc | default(0) != 0

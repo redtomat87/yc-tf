@@ -1,0 +1,28 @@
+#=====================================================================
+# /etc/angie/http.d/00-default.conf   {{ ansible_managed }}
+# Серверы по умолчанию: всё, что не совпало с server_name vhost'ов.
+#=====================================================================
+
+# Порт 80: редирект на HTTPS и площадка ACME http-01. Модуль ACME перехватывает
+# /.well-known/acme-challenge/ сам, до location, так что return 301 ему не мешает.
+server {
+    listen 80 default_server reuseport;
+    server_name _;
+
+    status_zone http_redirect;
+    access_log /var/log/angie/redirect.access.log extended;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# 443 с неизвестным SNI: рукопожатие отклоняется, сертификаты vhost'ов не светятся
+# на сканирование по IP. reuseport для QUIC допускается один раз на адрес — здесь.
+server {
+    listen 443 ssl default_server;
+    listen 443 quic reuseport default_server;
+    server_name _;
+
+    ssl_reject_handshake on;
+}

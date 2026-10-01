@@ -1,0 +1,27 @@
+#=====================================================================
+# /etc/angie/http.d/99-status.conf   {{ ansible_managed }}
+# Статус и метрики, только loopback:
+#   curl -s http://127.0.0.1:{{ angie_status_port }}/status/http/server_zones/
+#   curl -s http://127.0.0.1:{{ angie_status_port }}/metrics
+#=====================================================================
+
+server {
+    listen 127.0.0.1:{{ angie_status_port }};
+    server_name _;
+
+    access_log off;
+
+    location /status/ {
+        api /status/;
+        # Иначе API отдаёт содержимое всех файлов конфигурации.
+        api_config_files off;
+    }
+
+    location = /metrics {
+        prometheus all;
+    }
+
+    location / {
+        return 404;
+    }
+}

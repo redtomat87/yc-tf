@@ -1,0 +1,127 @@
+---
+# Проверки после развёртывания. Ничего не меняют:
+#   ansible-playbook verify.yml
+#   ansible-playbook site.yml --tags verify
+
+- name: Verify host security
+  hosts: all
+  become: true
+  gather_facts: true
+  tags: [verify]
+  vars:
+    # Порты, которые законно слушают не только loopback: SSH и веб — на всех адресах,
+    # экспортеры и Prometheus — на частном IP, если их потребитель на другой ВМ.
+    verify_public_ports: [22, 80, 443]
+    verify_private_ports: >-
+      {{ ([app_ports.node_exporter, app_ports.podman_exporter] if remote_consumers.prometheus else [])
+         + ([app_ports.angie_status] if remote_consumers.prometheus and inventory_hostname in groups['web'] | default([]) else [])
+         + ([app_ports.prometheus] if (remote_consumers.web or remote_consumers.grafana)
+            and inventory_hostname in groups['prometheus'] | default([]) else [])
+         + ([app_ports.grafana] if remote_consumers.web and inventory_hostname in groups['grafana'] | default([]) else []) }}
+  tasks:
+    - name: List TCP listeners
+      ansible.builtin.command: ss -Hltn
+      register: verify_ss
+      changed_when: false
+
+    # DNS netavark (aardvark-dns) слушает 53 на шлюзах bridge-сетей Podman — это внутренние адреса.
+    - name: Only expected ports listen outside loopback
+      ansible.builtin.assert:
+        that: verify_unexpected | length == 0
+        fail_msg: "Неожиданно слушают не только loopback: {{ verify_unexpected }}"
+        quiet: true
+      vars:
+        verify_unexpected: >-
+          {%- set out = [] -%}
+          {%- for line in verify_ss.stdout_lines -%}
+          {%-   set local = line.split()[3] -%}
+          {%-   set addr = local.rsplit(':', 1)[0] | regex_replace('^\[|\]$', '') -%}
+          {%-   set port = local.rsplit(':', 1)[1] | int -%}
+          {%-   if addr.startswith('127.') or addr == '::1' -%}
+          {%-   elif port in verify_public_ports -%}
+          {%-   elif addr == private_ip and port in verify_private_ports -%}
+          {%-   elif addr.startswith('10.') and port == 53 -%}
+          {%-   else -%}{%- set _ = out.append(local) -%}{%- endif -%}
+          {%- endfor -%}
+          {{ out }}
+
+    # Опубликованные порты rootful Podman — это правила nftables, а не сокеты, и в ss их нет.
+    - name: Read container port bindings
+      ansible.builtin.shell:
+        cmd: >-
+          set -o pipefail;
+          podman ps -q | xargs -r podman inspect --format '{{ "{{" }}.Name{{ "}}" }} {{ "{{" }}json .HostConfig.PortBindings{{ "}}" }}'
+        executable: /bin/bash
+      register: verify_bindings
+      changed_when: false
+      when: inventory_hostname in container_hosts
+
+    - name: Container ports are published only on loopback or the private IP
+      ansible.builtin.assert:
+        that: verify_bad_bindings | length == 0
+        fail_msg: "Порты контейнеров опубликованы на всех адресах: {{ verify_bad_bindings }}"
+        quiet: true
+      vars:
+        verify_bad_bindings: >-
+          {%- set out = [] -%}
+          {%- for line in verify_bindings.stdout_lines | default([]) -%}
+          {%-   set name, bindings = line.split(' ', 1) -%}
+          {%-   for port, binds in (bindings | from_json or {}).items() -%}
+          {%-     for b in binds if b.HostIp not in ['127.0.0.1', private_ip] -%}
+          {%-       set _ = out.append(name ~ ' ' ~ port ~ ' -> ' ~ (b.HostIp or '*') ~ ':' ~ b.HostPort) -%}
+          {%-     endfor -%}
+          {%-   endfor -%}
+          {%- endfor -%}
+          {{ out }}
+      when: inventory_hostname in container_hosts
+
+    - name: Read Podman host info
+      ansible.builtin.command: podman info --format json
+      register: verify_podman_info
+      changed_when: false
+      when: inventory_hostname in container_hosts
+
+    - name: Podman 6 on cgroups v2 with netavark and AppArmor
+      ansible.builtin.assert:
+        that:
+          - (verify_podman.version.Version.split('.') | first | int) >= 6
+          - verify_podman.host.cgroupVersion == 'v2'
+          - verify_podman.host.networkBackend == 'netavark'
+          - verify_podman.host.security.apparmorEnabled
+        fail_msg: >-
+          podman {{ verify_podman.version.Version }}, cgroups {{ verify_podman.host.cgroupVersion }},
+          network {{ verify_podman.host.networkBackend }}, apparmor {{ verify_podman.host.security.apparmorEnabled }}
+        quiet: true
+      vars:
+        verify_podman: "{{ verify_podman_info.stdout | from_json }}"
+      when: inventory_hostname in container_hosts
+
+- name: Verify web server
+  hosts: web
+  become: true
+  gather_facts: false
+  tags: [verify]
+  tasks:
+    - name: Check Angie, vhosts and the certificate
+      ansible.builtin.import_role:
+        name: angie
+        tasks_from: verify
+
+- name: Verify metrics
+  hosts: prometheus
+  become: true
+  gather_facts: false
+  tags: [verify]
+  tasks:
+    # Новые цели появляются после первого scrape (интервал 15 с).
+    - name: All Prometheus targets are up
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_ports.prometheus }}/prometheus/api/v1/targets?state=active"
+        return_content: true
+      register: verify_targets
+      until: >-
+        verify_targets.json is defined and
+        verify_targets.json.data.activeTargets | rejectattr('health', 'equalto', 'up') | list | length == 0
+      retries: 8
+      delay: 15
+      changed_when: false

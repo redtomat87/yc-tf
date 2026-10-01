@@ -17,7 +17,12 @@ Network={{ podman_kube_network }}
 {% for port in podman_kube_publish %}
 PublishPort={{ port }}
 {% endfor %}
+{% if podman_kube_userns == 'auto' %}
+{%   set host_id = podman_kube_userns_base | int + podman_kube_userns_slot | int * podman_kube_userns_size | int %}
+UserNS=auto:uidmapping=0:{{ host_id }}:{{ podman_kube_userns_size }},gidmapping=0:{{ host_id }}:{{ podman_kube_userns_size }}
+{% else %}
 UserNS={{ podman_kube_userns }}
+{% endif %}
 
 [Service]
 # Первый запуск тянет образы.

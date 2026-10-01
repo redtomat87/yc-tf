@@ -18,6 +18,20 @@ app_ports:
   podman_exporter: 9882
   test_backends: [9001, 9002, 9003, 9004]
 
+# --- Podman ----------------------------------------------------------
+# Постоянный слот UID/GID для каждого pod'а с UserNS=auto (роль podman_kube).
+# Номера не переиспользовать: слот привязан к владельцу файлов в томах.
+podman_userns_slots:
+  wordpress: 1
+  keycloak-postgres: 2
+  keycloak-1: 3
+  keycloak-2: 4
+  monitoring: 5
+  test-backend-1: 6
+  test-backend-2: 7
+  test-backend-3: 8
+  test-backend-4: 9
+
 # --- Angie ---------------------------------------------------------
 angie_vhosts:
   console: { order: 10, server_name: "angie.{{ site_domain }}" }

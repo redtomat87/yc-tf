@@ -16,6 +16,13 @@ podman_kube_network: ""
 # auto: свой диапазон UID/GID на pod, root в контейнере не root на хосте.
 # host — только для того, кому нужен root хоста (podman-exporter и сокет Podman).
 podman_kube_userns: auto
+# Диапазон закреплён за юнитом: слот N -> host ID base + N*65536, 65536 ID.
+# Без закрепления pod при пересоздании может получить другой диапазон, и файлы
+# в его томах окажутся чужими. 65536 покрывает и nobody (65534).
+# Слоты — podman_userns_slots в group_vars, по имени юнита.
+podman_kube_userns_slot: "{{ podman_userns_slots[podman_kube_name] }}"
+podman_kube_userns_base: 2147483647
+podman_kube_userns_size: 65536
 # Юниты, которые должны быть запущены раньше: ["keycloak-postgres.service"]
 podman_kube_requires: []
 

@@ -95,8 +95,8 @@ http {
     # одного имени валил бы всё. Валидация http-01 через порт 80 (00-default.conf).
     resolver 127.0.0.53 ipv6=off;
 {% for vhost in angie_vhosts_enabled %}
-    acme_client {{ vhost.name }}_rsa   {{ angie_acme_ca }} key_type=rsa;
-    acme_client {{ vhost.name }}_ecdsa {{ angie_acme_ca }};
+    acme_client {{ vhost.name }}{{ angie_acme_suffix }}_rsa   {{ angie_acme_ca }} key_type=rsa;
+    acme_client {{ vhost.name }}{{ angie_acme_suffix }}_ecdsa {{ angie_acme_ca }};
 {% endfor %}
 
     #--- Сжатие ------------------------------------------------------

@@ -7,6 +7,11 @@ angie_vhosts_enabled: >-
   {%- endfor -%}
   {{ out | sort(attribute='order') }}
 
+# Действующий сертификат Angie не перевыпускает, если сменился только URL CA. Поэтому
+# у клиентов staging свои имена (и каталоги в /var/lib/angie/acme): переход
+# staging -> prod заказывает новые сертификаты, а не оставляет тестовые.
+angie_acme_suffix: "{{ '_staging' if 'staging' in angie_acme_ca else '' }}"
+
 # Все файлы конфигурации, которыми владеет роль. По этому списку rescue откатывает
 # изменения, а очистка http.d понимает, какие файлы чужие.
 angie_config_files: >-

@@ -1,4 +1,4 @@
-{% import 'macros.j2' as m %}
+{% import 'macros.j2' as m with context %}
 {% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
 #=====================================================================
 # {{ item.dest }}   {{ ansible_managed }}

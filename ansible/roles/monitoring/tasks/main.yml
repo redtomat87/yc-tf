@@ -20,9 +20,6 @@
         podman_kube_userns: host
         podman_kube_manifest_changed: "{{ monitoring_exporter_manifest is changed }}"
 
-    - name: Remove the former combined monitoring pod
-      ansible.builtin.include_tasks: migrate-combined-pod.yml
-
     - name: Render Prometheus manifest
       ansible.builtin.template:
         src: prometheus.yml.j2

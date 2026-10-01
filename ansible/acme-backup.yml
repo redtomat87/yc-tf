@@ -1,0 +1,36 @@
+---
+# Локальная копия каталогов ACME с сервера:
+#
+#   ansible-playbook acme-backup.yml
+#
+# Роль angie доливает эту копию на новую ВМ, и после terraform destroy/apply
+# сертификаты переносятся, а не выпускаются заново (лимиты Let's Encrypt).
+#
+# В копии ПРИВАТНЫЕ КЛЮЧИ. Каталог files/ в .gitignore; обращаться с ним как с секретом.
+- name: Back up ACME certificates
+  hosts: web
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Find ACME files on the server
+      ansible.builtin.find:
+        paths: /var/lib/angie/acme
+        recurse: true
+        file_type: file
+      register: acme_remote
+
+    - name: Fetch them to the controller
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "{{ angie_acme_local_backup }}/{{ item.path | relpath('/var/lib/angie/acme') }}"
+        flat: true
+      loop: "{{ acme_remote.files }}"
+      loop_control:
+        label: "{{ item.path | relpath('/var/lib/angie/acme') }}"
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          {{ acme_remote.files | length }} файлов сохранено в
+          {{ angie_acme_local_backup }}: это приватные ключи.

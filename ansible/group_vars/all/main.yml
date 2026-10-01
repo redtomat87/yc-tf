@@ -41,6 +41,9 @@ angie_vhosts:
   keycloak: { order: 50, server_name: "auth.{{ site_domain }}" }
   test_backends: { order: 60, server_name: "angie-backend.{{ site_domain }}" }
 
+# Копия /var/lib/angie/acme на контроллере: снимает acme-backup.yml, доливает роль angie.
+angie_acme_local_backup: "{{ playbook_dir }}/files/acme-backup"
+
 angie_basic_auth_users: "{{ vault_basic_auth_users }}"
 angie_basic_auth_salt: "{{ vault_basic_auth_salt }}"
 

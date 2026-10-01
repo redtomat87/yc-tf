@@ -32,7 +32,7 @@
     state: started
 
 # Состояние каждого контейнера pod'а: running, а если есть healthcheck — healthy.
-- name: "Wait for {{ podman_kube_name }} containers"
+- name: "Wait for containers of {{ podman_kube_name }}"
   ansible.builtin.command:
     cmd: >-
       podman ps --all

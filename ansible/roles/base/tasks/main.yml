@@ -1,0 +1,8 @@
+---
+- name: Install base packages
+  ansible.builtin.import_tasks: install.yml
+  tags: [install, base_install]
+
+- name: Configure base system
+  ansible.builtin.import_tasks: configure.yml
+  tags: [config, base_config]

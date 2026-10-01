@@ -1,0 +1,12 @@
+---
+base_packages:
+  - apparmor
+  - apparmor-utils
+  - ca-certificates
+  - curl
+  - fail2ban
+  - gnupg
+  - prometheus-node-exporter
+  - unzip
+
+base_node_exporter_listen: 127.0.0.1:9100

@@ -1,0 +1,8 @@
+---
+# Общая база для всех хостов: пакеты, AppArmor, node_exporter, fail2ban.
+- name: Base system
+  hosts: all
+  become: true
+  roles:
+    - role: base
+      tags: [base]

@@ -1,0 +1,17 @@
+---
+# Полное обновление только по явному запросу: --tags full_upgrade
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: full
+    update_cache: true
+    lock_timeout: 600
+  tags: [never, full_upgrade]
+
+# lock_timeout: на свежей ВМ apt держит unattended-upgrades, без ожидания задача падает на гонке.
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 600

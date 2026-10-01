@@ -1,0 +1,31 @@
+---
+- name: Enable AppArmor
+  ansible.builtin.systemd_service:
+    name: apparmor
+    enabled: true
+    state: started
+
+# Метрики хоста читает Prometheus с того же хоста; наружу порт не нужен.
+- name: Bind node_exporter to loopback
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-node-exporter
+    regexp: "^ARGS="
+    line: 'ARGS="--web.listen-address={{ base_node_exporter_listen }}"'
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart node_exporter
+
+- name: Enable node_exporter
+  ansible.builtin.systemd_service:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+
+# Jail sshd включён пакетом (jail.d/defaults-debian.conf); jail'ы Angie кладёт роль angie.
+- name: Enable fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started

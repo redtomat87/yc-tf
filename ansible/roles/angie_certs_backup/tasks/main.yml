@@ -1,2 +1,0 @@
-- name: 'INSTALL http2/3/certs for redtomat site'
-  ansible.builtin.import_tasks: "{{ installation_type }}.yml"

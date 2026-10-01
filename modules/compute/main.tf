@@ -53,9 +53,11 @@ resource "yandex_compute_instance" "vm" {
     core_fraction = each.value.core_fraction
   }
 
+  # Диском управляет yandex_compute_disk.boot. auto_delete = false, чтобы при пересоздании ВМ
+  # диск с данными переподключался к новой ВМ, а не удалялся вместе со старой.
   boot_disk {
     disk_id     = yandex_compute_disk.boot[each.key].id
-    auto_delete = each.value.boot_disk_auto_delete
+    auto_delete = false
   }
 
   network_interface {

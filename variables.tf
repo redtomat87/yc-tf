@@ -66,22 +66,21 @@ variable "networks" {
 variable "vms" {
   description = "VMs keyed by name. Everything except network_name/subnet_name is optional."
   type = map(object({
-    cores                 = optional(number, 2)
-    memory                = optional(number, 4)
-    core_fraction         = optional(number, 100)
-    platform_id           = optional(string, "standard-v3")
-    preemptible           = optional(bool, false)
-    image_family          = optional(string, "ubuntu-2604-lts")
-    boot_disk_type        = optional(string, "network-ssd")
-    boot_disk_size        = optional(number, 20)
-    boot_disk_auto_delete = optional(bool, true)
-    nat                   = optional(bool, true)
-    static_ip             = optional(bool, false)
-    network_name          = string
-    subnet_name           = string
-    dns_records           = optional(list(string), [])
-    labels                = optional(map(string), {})
-    ansible_groups        = optional(list(string), [])
+    cores          = optional(number, 2)
+    memory         = optional(number, 4)
+    core_fraction  = optional(number, 100)
+    platform_id    = optional(string, "standard-v3")
+    preemptible    = optional(bool, false)
+    image_family   = optional(string, "ubuntu-2604-lts")
+    boot_disk_type = optional(string, "network-ssd")
+    boot_disk_size = optional(number, 20)
+    nat            = optional(bool, true)
+    static_ip      = optional(bool, false)
+    network_name   = string
+    subnet_name    = string
+    dns_records    = optional(list(string), [])
+    labels         = optional(map(string), {})
+    ansible_groups = optional(list(string), [])
   }))
 
   validation {

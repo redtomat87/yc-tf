@@ -76,8 +76,8 @@ vms = {
     boot_disk_type = "network-ssd"
     # Размер загрузочного диска в GB (20).
     boot_disk_size = 30
-    # Удалять ли загрузочный диск вместе с ВМ (true).
-    boot_disk_auto_delete = true
+    # Диск удаляется только вместе с ВМ из vms (terraform destroy или удаление записи);
+    # при пересоздании ВМ (например, при переключении static_ip) он сохраняется.
 
     # Публичный адрес (true).
     nat = true

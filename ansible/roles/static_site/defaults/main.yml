@@ -1,0 +1,5 @@
+---
+# Архив сайта (в git не хранится, *.zip в .gitignore). Корень архива — корень сайта.
+static_site_archive: "{{ role_path }}/files/static_site.zip"
+# Каталог, из которого Angie отдаёт сайт (group_vars: static_site_root).
+static_site_root: /var/www/static

@@ -1,0 +1,32 @@
+---
+- name: Deploy static site
+  tags: [config, static_site_config]
+  block:
+    - name: Check the site archive on the controller
+      ansible.builtin.stat:
+        path: "{{ static_site_archive }}"
+      register: static_site_archive_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Site archive must exist
+      ansible.builtin.assert:
+        that: static_site_archive_stat.stat.exists
+        fail_msg: "Нет архива сайта {{ static_site_archive }} (он не хранится в git)."
+
+    - name: Create site root
+      ansible.builtin.file:
+        path: "{{ static_site_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    # Файлы принадлежат root и только читаются Angie: взломанный воркер не перепишет сайт.
+    - name: Unpack site
+      ansible.builtin.unarchive:
+        src: "{{ static_site_archive }}"
+        dest: "{{ static_site_root }}"
+        owner: root
+        group: root
+        mode: "u=rwX,go=rX"

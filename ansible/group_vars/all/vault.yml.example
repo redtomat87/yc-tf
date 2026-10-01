@@ -1,0 +1,34 @@
+---
+# Структура group_vars/all/vault.yml (шифруется ansible-vault, пароль в ansible/.vault):
+#   ansible-vault create group_vars/all/vault.yml
+#   ansible-vault edit   group_vars/all/vault.yml
+
+# Basic auth для /console, /prometheus и тестовых бэкендов
+vault_basic_auth_users:
+  - name: admin
+    password: change-me
+# 16 символов из [./0-9A-Za-z]: соль sha512-crypt, постоянная, чтобы htpasswd не менялся
+vault_basic_auth_salt: abcdefghABCDEFGH
+
+# WordPress + MySQL
+vault_mysql_root_password: change-me
+vault_wordpress_db_password: change-me
+vault_mysqld_exporter_password: change-me
+# https://api.wordpress.org/secret-key/1.1/salt/
+vault_wordpress_salts:
+  AUTH_KEY: change-me
+  SECURE_AUTH_KEY: change-me
+  LOGGED_IN_KEY: change-me
+  NONCE_KEY: change-me
+  AUTH_SALT: change-me
+  SECURE_AUTH_SALT: change-me
+  LOGGED_IN_SALT: change-me
+  NONCE_SALT: change-me
+
+# Keycloak + PostgreSQL
+vault_keycloak_db_password: change-me
+vault_keycloak_admin_password: change-me
+
+# Grafana: локальный admin и секрет OAuth-клиента в Keycloak
+vault_grafana_admin_password: change-me
+vault_grafana_oauth_client_secret: change-me

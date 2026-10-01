@@ -19,3 +19,4 @@ rules:
 ignore: |
   inventories/yc/
   roles/*/files/
+  group_vars/all/vault.yml

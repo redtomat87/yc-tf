@@ -36,8 +36,21 @@ resource "yandex_compute_disk" "boot" {
   }
 }
 
+# Провайдер не умеет снять статический адрес с работающей ВМ: пустой nat_ip_address
+# он изменением не считает, а удаление занятого адреса API отклоняет (Address in use).
+# Поэтому смена static_ip пересоздаёт ВМ; диск при этом сохраняется (auto_delete = false).
+resource "terraform_data" "static_ip" {
+  for_each = var.vms
+
+  input = each.value.static_ip
+}
+
 resource "yandex_compute_instance" "vm" {
   for_each = var.vms
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.static_ip[each.key]]
+  }
 
   name        = each.key
   hostname    = each.key

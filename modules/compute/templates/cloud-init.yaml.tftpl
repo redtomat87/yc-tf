@@ -10,3 +10,5 @@ users:
       - ${ssh_public_key}
 ssh_pwauth: false
 disable_root: true
+# При пересоздании ВМ на том же диске ключи хоста сохраняются, known_hosts остаётся верным.
+ssh_deletekeys: false

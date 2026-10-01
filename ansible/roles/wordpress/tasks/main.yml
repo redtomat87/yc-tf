@@ -20,5 +20,5 @@
         podman_kube_description: WordPress, MySQL and mysqld_exporter
         podman_kube_manifest_changed: "{{ wordpress_manifest is changed }}"
         podman_kube_publish:
-          - "127.0.0.1:{{ app_ports.wordpress }}:80"
-          - "127.0.0.1:{{ app_ports.mysqld_exporter }}:9104"
+          - { port: "{{ app_ports.wordpress }}", container_port: 80, remote: "{{ remote_consumers.web }}" }
+          - { port: "{{ app_ports.mysqld_exporter }}", container_port: 9104, remote: "{{ remote_consumers.prometheus }}" }

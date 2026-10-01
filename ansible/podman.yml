@@ -1,6 +1,7 @@
 ---
+# Podman на всех хостах с контейнерами (container_groups в group_vars/all/topology.yml).
 - name: Podman
-  hosts: apps
+  hosts: wordpress:keycloak:keycloak_db:prometheus:grafana:test_backends
   become: true
   roles:
     - role: podman

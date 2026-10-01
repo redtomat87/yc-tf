@@ -1,15 +1,69 @@
 ---
 # Приложения в контейнерах: Kubernetes YAML + Quadlet (.kube) под Podman.
-# Наружу ничего не публикуется: порты только на 127.0.0.1, вход — через Angie (web.yml).
-- name: Applications
-  hosts: apps
+# Каждый сервис — своя группа inventory, сервисы можно разнести по разным ВМ.
+# Наружу ничего не публикуется: порты на 127.0.0.1 и, если потребитель на другой ВМ,
+# на частном IP; вход снаружи — через Angie (web.yml).
+
+- name: Podman exporter
+  hosts: wordpress:keycloak:keycloak_db:prometheus:grafana:test_backends
+  become: true
+  tasks:
+    - name: Run podman-exporter
+      ansible.builtin.import_role:
+        name: monitoring
+        tasks_from: podman_exporter
+      tags: [monitoring, podman_exporter]
+
+- name: WordPress
+  hosts: wordpress
   become: true
   roles:
     - role: wordpress
       tags: [wordpress]
-    - role: keycloak
+
+- name: Keycloak database
+  hosts: keycloak_db
+  become: true
+  tasks:
+    - name: Run PostgreSQL for Keycloak
+      ansible.builtin.import_role:
+        name: keycloak
+        tasks_from: db
+      tags: [keycloak, keycloak_db]
+
+- name: Keycloak
+  hosts: keycloak
+  become: true
+  tasks:
+    - name: Run Keycloak replicas
+      ansible.builtin.import_role:
+        name: keycloak
+        tasks_from: server
       tags: [keycloak]
-    - role: monitoring
-      tags: [monitoring]
+
+- name: Prometheus
+  hosts: prometheus
+  become: true
+  tasks:
+    - name: Run Prometheus
+      ansible.builtin.import_role:
+        name: monitoring
+        tasks_from: prometheus
+      tags: [monitoring, prometheus]
+
+- name: Grafana
+  hosts: grafana
+  become: true
+  tasks:
+    - name: Run Grafana
+      ansible.builtin.import_role:
+        name: monitoring
+        tasks_from: grafana
+      tags: [monitoring, grafana]
+
+- name: Test backends
+  hosts: test_backends
+  become: true
+  roles:
     - role: test_backends
       tags: [test_backends]

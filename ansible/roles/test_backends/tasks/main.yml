@@ -24,7 +24,8 @@
         podman_kube_name: "test-backend-{{ idx + 1 }}"
         podman_kube_description: "Test backend {{ idx + 1 }} ({{ item.item }})"
         podman_kube_manifest_changed: "{{ item is changed }}"
-        podman_kube_publish: ["127.0.0.1:{{ app_ports.test_backends[idx] }}:8080"]
+        podman_kube_publish:
+          - { port: "{{ app_ports.test_backends[idx] }}", container_port: 8080, remote: "{{ remote_consumers.web }}" }
       loop: "{{ test_backends_manifests.results }}"
       loop_control:
         index_var: idx

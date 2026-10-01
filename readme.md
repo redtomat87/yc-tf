@@ -31,9 +31,10 @@ modules/compute             образ по family, диск, ВМ, статич
 modules/dns_records         A-записи в зоне dns_zone
 modules/ansible_inventory   ansible/inventories/yc/hosts.yml
 ansible/
-  site.yml                  всё по порядку: base -> podman -> web -> apps
-  base.yml podman.yml web.yml apps.yml acme-backup.yml
-  group_vars/all/main.yml   домены, порты на 127.0.0.1, vhost'ы, слоты UserNS
+  site.yml                  всё по порядку: base -> podman -> web -> apps -> verify
+  base.yml podman.yml web.yml apps.yml verify.yml acme-backup.yml
+  group_vars/all/main.yml   домены, порты, vhost'ы, слоты UserNS
+  group_vars/all/topology.yml  где какие сервисы: группы, адреса между ВМ, реплики Keycloak
   group_vars/all/vault.yml  секреты (ansible-vault, пароль в ansible/.vault); структура — vault.yml.example
   inventories/yc            генерирует Terraform
   inventories/local         локальный стенд (libvirt), LE staging
@@ -84,13 +85,46 @@ terraform apply
 Каждая ВМ — запись в `vms`; обязательны только `network_name` и `subnet_name`,
 остальное с умолчаниями (описаны в sample). Основное:
 
-- `ansible_groups` — группы inventory: `web` (Angie, статика), `apps` (контейнеры);
+- `ansible_groups` — какие сервисы работают на ВМ (раздел «Размещение сервисов»);
 - `static_ip = true` — зарезервированный адрес, не меняется при перезапуске
   preemptible-ВМ. **Переключение пересоздаёт ВМ** (около минуты простоя): провайдер
   не умеет снять статический адрес с работающей ВМ, а API не удаляет занятый адрес.
   Диск, данные и ключи хоста сохраняются;
 - `dns_records` — A-записи в `dns_zone`;
 - `ssh_user` (по умолчанию `user`) создаёт cloud-init, это же имя попадает в inventory.
+
+### Размещение сервисов
+
+Каждый сервис — группа inventory, ВМ перечисляет свои в `ansible_groups`:
+
+| группа | что | замечания |
+|---|---|---|
+| `web` | Angie, статика, консоль | на эту ВМ указывают `dns_records`; одна ВМ |
+| `wordpress` | WordPress + MySQL + mysqld_exporter | одна ВМ |
+| `keycloak_db` | PostgreSQL для Keycloak | одна ВМ |
+| `keycloak` | реплики Keycloak | одна ВМ — 2 реплики, несколько — по реплике на ВМ |
+| `prometheus`, `grafana` | мониторинг | по одной ВМ |
+| `test_backends` | 4 тестовых бэкенда | одна ВМ |
+
+Все на одной ВМ — как в `terraform.tfvars.sample`. Разнести — раздать группы
+разным ВМ, например:
+
+```hcl
+angie  = { ..., dns_records = [...], ansible_groups = ["web", "test_backends"] }
+apps-a = { ..., ansible_groups = ["wordpress", "keycloak_db", "keycloak"] }
+apps-b = { ..., ansible_groups = ["keycloak", "prometheus", "grafana"] }
+```
+
+Адреса друг друга сервисы берут из inventory (`group_vars/all/topology.yml`): на
+той же ВМ — 127.0.0.1, на другой — частный IP (`private_ip`, его пишет Terraform).
+Порт публикуется на частном IP, только если потребитель на другой ВМ; снаружи
+частные адреса закрыты security group, внутри неё ВМ видят друг друга. Vhost
+сервиса, у группы которого нет хостов, не создаётся.
+
+Реплики Keycloak публикуют порт JGroups на частном IP и объявляют его соседям
+(`cache-embedded-network-external-address`): адрес контейнера в bridge-сети с
+другой ВМ недоступен. К PostgreSQL реплика ходит по имени pod'а, если он на той же
+ВМ, иначе по частному IP.
 
 ## Развёртывание
 
@@ -101,12 +135,25 @@ ansible-playbook site.yml --tags config            # только конфигу
 ansible-playbook site.yml --tags angie             # один компонент
 ansible-playbook site.yml --tags full_upgrade      # плюс apt full-upgrade
 ansible-playbook site.yml --check --diff           # что изменится
+ansible-playbook verify.yml                        # только проверки
 ansible-playbook acme-backup.yml                   # снять копию сертификатов в ansible/files/
 ```
 
 Теги компонентов: `base`, `podman`, `static_site`, `angie`, `wordpress`,
-`keycloak`, `monitoring`, `test_backends`. Слои: `install`, `config`, а также
+`keycloak` (`keycloak_db`), `monitoring` (`prometheus`, `grafana`,
+`podman_exporter`), `test_backends`. Слои: `install`, `config`, `verify`, а также
 `<роль>_install`/`<роль>_config`. Повторный прогон даёт `changed=0`.
+
+`verify.yml` (последним в `site.yml`) ничего не меняет и проверяет:
+
+- не на loopback слушают только 22/80/443 и порты, которым нужен частный IP;
+  опубликованные порты контейнеров (это правила nftables, в `ss` их нет) —
+  только на 127.0.0.1 или частном IP;
+- Podman ≥ 6, cgroups v2, netavark, AppArmor; Angie под профилем `angie`,
+  каждый контейнер — под `containers-default` (проверка в `podman_kube`);
+- каждый vhost отвечает без 5xx и с HSTS; сертификат покрывает все имена и
+  действует ещё 7 дней (только с боевым CA);
+- все цели Prometheus в `up`.
 
 Первый выпуск сертификатов лучше проверить на staging, чтобы не тратить лимиты
 Let's Encrypt (подробнее — раздел «ACME» ниже):

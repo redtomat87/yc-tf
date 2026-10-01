@@ -23,7 +23,8 @@ module "compute" {
   zone_of_availability = var.zone_of_availability
   subnet_ids           = module.network.subnet_ids
   security_group_ids   = module.network.security_group_ids
-  ssh_open_key_file    = var.ssh_open_key_file
+  ssh_user             = var.ssh_user
+  ssh_public_key_file  = var.ssh_public_key_file
 }
 
 module "dns" {
@@ -42,6 +43,6 @@ module "ansible_inventory" {
       ansible_groups = local.vms[name].ansible_groups
     })
   }
-  ssh_user       = "ubuntu"
+  ssh_user       = var.ssh_user
   inventory_file = "${path.root}/ansible/inventories/yc/hosts.yml"
 }

@@ -1,6 +1,22 @@
-variable "ssh_open_key_file" {
-  type      = string
-  sensitive = true
+variable "ssh_public_key_file" {
+  description = "Public key installed for ssh_user by cloud-init"
+  type        = string
+
+  validation {
+    condition     = fileexists(pathexpand(var.ssh_public_key_file))
+    error_message = "Public key file not found."
+  }
+}
+
+variable "ssh_user" {
+  description = "Login user created by cloud-init; also written to the Ansible inventory"
+  type        = string
+  default     = "user"
+
+  validation {
+    condition     = can(regex("^[a-z_][a-z0-9_-]{0,31}$", var.ssh_user)) && !contains(["root", "ubuntu"], var.ssh_user)
+    error_message = "ssh_user must be a valid Linux user name other than root and ubuntu."
+  }
 }
 
 variable "zone_of_availability" {

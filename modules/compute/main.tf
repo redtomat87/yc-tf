@@ -66,7 +66,10 @@ resource "yandex_compute_instance" "vm" {
   }
 
   metadata = {
-    ssh-keys = "ubuntu:${file(var.ssh_open_key_file)}"
+    user-data = templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
+      ssh_user       = var.ssh_user
+      ssh_public_key = trimspace(file(pathexpand(var.ssh_public_key_file)))
+    })
   }
 
   scheduling_policy {

@@ -1,0 +1,12 @@
+#cloud-config
+# Единственный пользователь ВМ; то же имя Terraform пишет в ansible inventory.
+users:
+  - name: ${ssh_user}
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+ssh_pwauth: false
+disable_root: true

@@ -1,0 +1,31 @@
+---
+- name: Deploy test backends
+  tags: [config, test_backends_config]
+  block:
+    - name: Render test backend manifests
+      ansible.builtin.template:
+        src: test-backend.yml.j2
+        dest: "/etc/containers/systemd/test-backend-{{ test_backend_index }}.yml"
+        owner: root
+        group: root
+        mode: "0644"
+      vars:
+        test_backend_index: "{{ idx + 1 }}"
+        test_backend_color: "{{ item }}"
+      loop: "{{ test_backends_colors }}"
+      loop_control:
+        index_var: idx
+      register: test_backends_manifests
+
+    - name: Run test backends
+      ansible.builtin.include_role:
+        name: podman_kube
+      vars:
+        podman_kube_name: "test-backend-{{ idx + 1 }}"
+        podman_kube_description: "Test backend {{ idx + 1 }} ({{ item.item }})"
+        podman_kube_manifest_changed: "{{ item is changed }}"
+        podman_kube_publish: ["127.0.0.1:{{ app_ports.test_backends[idx] }}:8080"]
+      loop: "{{ test_backends_manifests.results }}"
+      loop_control:
+        index_var: idx
+        label: "test-backend-{{ idx + 1 }}"

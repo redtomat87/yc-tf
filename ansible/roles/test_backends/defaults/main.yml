@@ -1,0 +1,8 @@
+---
+test_backends_image: docker.io/vscoder/webdebugger:v1.3.1
+
+# Цвет фона у каждого бэкенда свой, чтобы при балансировке было видно, кто ответил.
+# Порты на 127.0.0.1 — app_ports.test_backends, по порядку.
+test_backends_colors: [white, limegreen, skyblue, gold]
+# Задержка ответа в секундах: удобно для экспериментов с таймаутами и least_conn.
+test_backends_delay: 0

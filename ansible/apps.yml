@@ -1,0 +1,9 @@
+---
+# Приложения в контейнерах: Kubernetes YAML + Quadlet (.kube) под Podman.
+# Наружу ничего не публикуется: порты только на 127.0.0.1, вход — через Angie (web.yml).
+- name: Applications
+  hosts: apps
+  become: true
+  roles:
+    - role: test_backends
+      tags: [test_backends]

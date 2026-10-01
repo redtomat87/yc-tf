@@ -7,8 +7,8 @@
 
 upstream keycloak {
     least_conn;
-{% for port in app_ports.keycloak %}
-    server 127.0.0.1:{{ port }};
+{% for kc in keycloak_instances %}
+    server {{ peer_addr[kc.host] }}:{{ kc.http_port }};
 {% endfor %}
     # Сессия входа живёт на одной реплике, пока кэши не разошлись по кластеру.
     sticky cookie kc_srv max-age=3600 secure httponly;

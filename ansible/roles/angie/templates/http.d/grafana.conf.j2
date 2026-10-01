@@ -1,22 +1,25 @@
 {% import 'macros.j2' as m with context %}
 {% set vhost = angie_vhosts[item.vhost] | combine({'name': item.vhost}) %}
+{% set has_prometheus = groups['prometheus'] | default([]) | length > 0 %}
 #=====================================================================
 # {{ item.dest }}   {{ ansible_managed }}
 # Grafana (вход через Keycloak) и Prometheus под basic auth (роль monitoring).
 #=====================================================================
 
 upstream grafana {
-    server 127.0.0.1:{{ app_ports.grafana }};
+    server {{ peer_addr[groups['grafana'][0]] }}:{{ app_ports.grafana }};
     keepalive 16;
     zone grafana 1m;
 }
 
+{% if has_prometheus %}
 upstream prometheus {
-    server 127.0.0.1:{{ app_ports.prometheus }};
+    server {{ peer_addr[groups['prometheus'][0]] }}:{{ app_ports.prometheus }};
     keepalive 8;
     zone prometheus 1m;
 }
 
+{% endif %}
 server {
 {{ m.tls_server(vhost) }}
 
@@ -24,6 +27,7 @@ server {
         include /etc/angie/snippets/proxy.conf;
         proxy_pass http://grafana;
     }
+{% if has_prometheus %}
 
     # Prometheus запущен с --web.route-prefix=/prometheus.
     location /prometheus {
@@ -31,4 +35,5 @@ server {
         include /etc/angie/snippets/proxy.conf;
         proxy_pass http://prometheus;
     }
+{% endif %}
 }

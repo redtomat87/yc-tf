@@ -1,23 +1,34 @@
 #=====================================================================
 # /etc/angie/http.d/99-status.conf   {{ ansible_managed }}
-# Статус и метрики, только loopback:
+# Статус и метрики: loopback, а если Prometheus на другой ВМ — ещё частный IP,
+# и /metrics оттуда отдаётся только хостам Prometheus.
 #   curl -s http://127.0.0.1:{{ angie_status_port }}/status/http/server_zones/
 #   curl -s http://127.0.0.1:{{ angie_status_port }}/metrics
 #=====================================================================
 
 server {
     listen 127.0.0.1:{{ angie_status_port }};
+{% if remote_consumers.prometheus %}
+    listen {{ private_ip }}:{{ angie_status_port }};
+{% endif %}
     server_name _;
 
     access_log off;
 
     location /status/ {
+        allow 127.0.0.1;
+        deny all;
         api /status/;
         # Иначе API отдаёт содержимое всех файлов конфигурации.
         api_config_files off;
     }
 
     location = /metrics {
+        allow 127.0.0.1;
+{% for host in groups['prometheus'] | default([]) if host != inventory_hostname %}
+        allow {{ hostvars[host].private_ip }};
+{% endfor %}
+        deny all;
         prometheus all;
     }
 

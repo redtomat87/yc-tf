@@ -15,7 +15,7 @@ map $http_cookie $wordpress_skip_cache {
 }
 
 upstream wordpress {
-    server 127.0.0.1:{{ app_ports.wordpress }};
+    server {{ peer_addr[groups['wordpress'][0]] }}:{{ app_ports.wordpress }};
     keepalive 16;
     zone wordpress 1m;
 }

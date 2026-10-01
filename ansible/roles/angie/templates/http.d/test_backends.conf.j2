@@ -7,7 +7,7 @@
 
 upstream test_backends {
 {% for port in app_ports.test_backends %}
-    server 127.0.0.1:{{ port }};
+    server {{ peer_addr[groups['test_backends'][0]] }}:{{ port }};
 {% endfor %}
     keepalive 16;
     zone test_backends 1m;

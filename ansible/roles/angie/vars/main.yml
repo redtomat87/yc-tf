@@ -1,8 +1,11 @@
 ---
 # Включённые vhost'ы: [{name, order, server_name, ...}] по возрастанию order.
+# Vhost с group включается, только если в этой группе inventory есть хосты.
 angie_vhosts_enabled: >-
   {%- set out = [] -%}
-  {%- for name, vhost in angie_vhosts.items() if vhost.enabled | default(true) -%}
+  {%- for name, vhost in angie_vhosts.items()
+        if vhost.enabled | default(true)
+        and (vhost.group is not defined or groups[vhost.group] | default([]) | length > 0) -%}
   {%-   set _ = out.append(vhost | combine({'name': name})) -%}
   {%- endfor -%}
   {{ out | sort(attribute='order') }}

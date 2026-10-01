@@ -148,9 +148,7 @@
 - name: Wait for ACME certificates
   ansible.builtin.command: >-
     openssl x509 -in /var/lib/angie/acme/{{ item }}/certificate.pem -noout -checkend 0
-  loop: >-
-    {{ angie_vhosts_enabled | map(attribute='name') | map('regex_replace', '$', angie_acme_suffix)
-       | product(['rsa', 'ecdsa']) | map('join', '_') | list }}
+  loop: ["{{ angie_acme_client }}_rsa", "{{ angie_acme_client }}_ecdsa"]
   register: angie_acme_wait
   # По rc, а не по `is succeeded`: при failed_when: false попытка всегда «успешна».
   until: angie_acme_wait.rc == 0

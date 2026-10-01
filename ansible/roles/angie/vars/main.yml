@@ -11,6 +11,8 @@ angie_vhosts_enabled: >-
 # у клиентов staging свои имена (и каталоги в /var/lib/angie/acme): переход
 # staging -> prod заказывает новые сертификаты, а не оставляет тестовые.
 angie_acme_suffix: "{{ '_staging' if 'staging' in angie_acme_ca else '' }}"
+# Пара клиентов <имя>_rsa и <имя>_ecdsa на все vhost'ы.
+angie_acme_client: "site{{ angie_acme_suffix }}"
 
 # Все файлы конфигурации, которыми владеет роль. По этому списку rescue откатывает
 # изменения, а очистка http.d понимает, какие файлы чужие.

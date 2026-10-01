@@ -90,18 +90,16 @@ http {
     limit_conn_status    429;
 
     #--- ACME --------------------------------------------------------
-    # Пара клиентов (RSA и ECDSA) на каждый vhost: один acme_client выпускает ОДИН
-    # сертификат на все server_name ссылающихся на него server{}, и провал валидации
-    # одного имени валил бы всё. Валидация http-01 через порт 80 (00-default.conf).
-    # Аккаунт у всех клиентов один (account_key): Let's Encrypt пускает не больше
-    # 10 новых регистраций за 3 часа с одного IP, а клиентов 2 на vhost.
+    # Один acme_client выпускает ОДИН сертификат на все server_name ссылающихся на него
+    # server{}: здесь это SAN-сертификат на все vhost'ы, в паре RSA и ECDSA.
+    # Валидация http-01 через порт 80 (00-default.conf).
+    # Без account_key каждый клиент регистрирует свой аккаунт, а Let's Encrypt пускает
+    # не больше 10 новых регистраций за 3 часа с одного IP; с ним аккаунт один.
     resolver 127.0.0.53 ipv6=off;
-{% for vhost in angie_vhosts_enabled %}
-    acme_client {{ vhost.name }}{{ angie_acme_suffix }}_rsa   {{ angie_acme_ca }} key_type=rsa
+    acme_client {{ angie_acme_client }}_rsa   {{ angie_acme_ca }} key_type=rsa
                 account_key=/var/lib/angie/acme/account{{ angie_acme_suffix }}.key;
-    acme_client {{ vhost.name }}{{ angie_acme_suffix }}_ecdsa {{ angie_acme_ca }}
+    acme_client {{ angie_acme_client }}_ecdsa {{ angie_acme_ca }}
                 account_key=/var/lib/angie/acme/account{{ angie_acme_suffix }}.key;
-{% endfor %}
 
     #--- Сжатие ------------------------------------------------------
     # gzip — для клиентов без br/zstd в Accept-Encoding.

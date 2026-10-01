@@ -13,13 +13,12 @@
     access_log /var/log/angie/{{ vhost.name }}.access.log extended;
     error_log  /var/log/angie/{{ vhost.name }}.error.log;
 
-{% set client = vhost.name ~ angie_acme_suffix %}
-    acme {{ client }}_rsa;
-    acme {{ client }}_ecdsa;
-    ssl_certificate     $acme_cert_{{ client }}_rsa;
-    ssl_certificate_key $acme_cert_key_{{ client }}_rsa;
-    ssl_certificate     $acme_cert_{{ client }}_ecdsa;
-    ssl_certificate_key $acme_cert_key_{{ client }}_ecdsa;
+    acme {{ angie_acme_client }}_rsa;
+    acme {{ angie_acme_client }}_ecdsa;
+    ssl_certificate     $acme_cert_{{ angie_acme_client }}_rsa;
+    ssl_certificate_key $acme_cert_key_{{ angie_acme_client }}_rsa;
+    ssl_certificate     $acme_cert_{{ angie_acme_client }}_ecdsa;
+    ssl_certificate_key $acme_cert_key_{{ angie_acme_client }}_ecdsa;
 
     include /etc/angie/snippets/headers.conf;
 {%- endmacro %}

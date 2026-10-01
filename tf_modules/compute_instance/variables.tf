@@ -27,3 +27,8 @@ variable "ssh_open_key_file" {
 variable "subnet_ids" {
   type = map(string)
 }
+
+variable "security_group_ids" {
+  description = "Security group id per network name"
+  type        = map(string)
+}

@@ -17,8 +17,9 @@ resource "yandex_compute_instance" "vm" {
   }
 
   network_interface {
-    subnet_id = var.subnet_ids["${each.value.network_name}-${each.value.subnet_name}"]
-    nat       = each.value.nat
+    subnet_id          = var.subnet_ids["${each.value.network_name}-${each.value.subnet_name}"]
+    nat                = each.value.nat
+    security_group_ids = [var.security_group_ids[each.value.network_name]]
   }
 
   metadata = {

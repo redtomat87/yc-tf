@@ -1,0 +1,9 @@
+---
+# Модуль wireguard есть в ядре Ubuntu, из пакетов нужны только утилиты.
+- name: Install WireGuard tools and nftables
+  ansible.builtin.apt:
+    name: [wireguard-tools, nftables]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    lock_timeout: 600

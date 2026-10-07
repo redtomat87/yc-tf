@@ -1,0 +1,8 @@
+---
+- name: Install WireGuard
+  ansible.builtin.import_tasks: install.yml
+  tags: [install, wireguard_install]
+
+- name: Configure WireGuard
+  ansible.builtin.import_tasks: configure.yml
+  tags: [config, wireguard_config]

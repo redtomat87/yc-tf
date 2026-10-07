@@ -1,0 +1,12 @@
+---
+# Jump-хост с WireGuard (группа vpn; только при нескольких ВМ). Остальные ВМ доступны
+# Ansible лишь по частным адресам через туннель, поэтому при первом развёртывании:
+#   ansible-playbook vpn.yml
+#   sudo wg-quick up files/wireguard/wg-<jump-хост>.conf
+#   ansible-playbook site.yml
+- name: VPN
+  hosts: vpn
+  become: true
+  roles:
+    - role: wireguard
+      tags: [wireguard]

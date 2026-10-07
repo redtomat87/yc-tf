@@ -1,0 +1,19 @@
+---
+# Порт и сети, которые клиент заворачивает в туннель, Terraform пишет в inventory
+# (vpn_port, vpn_routes). Без них — порт по умолчанию и подсеть самого хоста.
+wireguard_port: "{{ vpn_port | default(51820) }}"
+wireguard_routes: >-
+  {{ vpn_routes | default([ansible_facts.default_ipv4.network ~ '/' ~ ansible_facts.default_ipv4.prefix]) }}
+
+wireguard_interface: wg0
+# Адреса внутри туннеля: сервер и единственный клиент.
+wireguard_network: 10.99.0.0/24
+wireguard_server_address: 10.99.0.1
+wireguard_client_address: 10.99.0.2
+
+# Адрес, на который подключается клиент.
+wireguard_endpoint: "{{ ansible_host }}"
+
+# Клиентский конфиг на контроллере. Имя файла становится именем интерфейса
+# wg-quick и NetworkManager, поэтому оно не длиннее 15 символов.
+wireguard_client_config: "{{ playbook_dir }}/files/wireguard/wg-{{ inventory_hostname[:12] }}.conf"

@@ -5,6 +5,9 @@
 #   ansible-playbook site.yml --tags angie        # только Angie
 #   ansible-playbook site.yml --tags verify       # только проверки
 #   ansible-playbook site.yml --tags full_upgrade # плюс apt full-upgrade
+- name: VPN
+  ansible.builtin.import_playbook: vpn.yml
+
 - name: Base system
   ansible.builtin.import_playbook: base.yml
 

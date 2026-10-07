@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# VPN к {{ inventory_hostname }}. Подключиться одним из способов:
+#   sudo wg-quick up {{ wireguard_client_config }}
+#   nmcli connection import type wireguard file {{ wireguard_client_config }}
+[Interface]
+PrivateKey = {{ wireguard_client_private_key }}
+Address = {{ wireguard_client_address }}/32
+
+[Peer]
+PublicKey = {{ wireguard_server_public_key }}
+Endpoint = {{ wireguard_endpoint }}:{{ wireguard_port }}
+AllowedIPs = {{ ([wireguard_network] + wireguard_routes) | join(', ') }}
+PersistentKeepalive = 25

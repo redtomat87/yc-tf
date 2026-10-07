@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+# Трафик клиента уходит в сеть от адреса jump-хоста (masquerade): остальным ВМ не нужен
+# маршрут обратно в туннель, и для security group это трафик своей ВМ.
+# Правила nft заданы командами, а не файлом: AppArmor-профиль wg-quick из Ubuntu
+# не даёт nft читать файлы. destroy делает подъём повторяемым.
+[Interface]
+Address = {{ wireguard_server_address }}/{{ wireguard_network.split('/')[1] }}
+ListenPort = {{ wireguard_port }}
+PostUp = wg set %i private-key /etc/wireguard/server.key
+PostUp = nft destroy table ip %i_nat
+PostUp = nft 'add table ip %i_nat'
+PostUp = nft 'add chain ip %i_nat postrouting { type nat hook postrouting priority srcnat; }'
+PostUp = nft 'add rule ip %i_nat postrouting ip saddr {{ wireguard_network }} oifname != "%i" masquerade'
+PostDown = nft destroy table ip %i_nat
+
+[Peer]
+# Клиент: {{ wireguard_client_config | basename }} на контроллере.
+PublicKey = {{ wireguard_public_keys.results[1].stdout }}
+AllowedIPs = {{ wireguard_client_address }}/32

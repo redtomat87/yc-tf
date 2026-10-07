@@ -1,0 +1,63 @@
+---
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_file: /etc/sysctl.d/90-wireguard.conf
+    sysctl_set: true
+
+# Ключи создаются один раз и дальше не меняются: иначе каждый прогон ломал бы клиентский конфиг.
+- name: Generate WireGuard keys
+  ansible.builtin.shell:
+    cmd: umask 077 && wg genkey > /etc/wireguard/{{ item }}.key
+    creates: /etc/wireguard/{{ item }}.key
+  loop: [server, client]
+
+- name: Derive public keys
+  ansible.builtin.shell:
+    cmd: wg pubkey < /etc/wireguard/{{ item }}.key
+  loop: [server, client]
+  register: wireguard_public_keys
+  changed_when: false
+
+# Закрытый ключ сервера в конфиг не пишется: его подставляет PostUp.
+- name: Render the server config
+  ansible.builtin.template:
+    src: server.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart WireGuard
+
+- name: Start WireGuard
+  ansible.builtin.systemd_service:
+    name: "wg-quick@{{ wireguard_interface }}"
+    enabled: true
+    state: started
+
+- name: Read the client private key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/client.key
+  register: wireguard_client_key
+  no_log: true
+
+- name: Create the client config directory on the controller
+  ansible.builtin.file:
+    path: "{{ wireguard_client_config | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Write the client config on the controller
+  ansible.builtin.template:
+    src: client.conf.j2
+    dest: "{{ wireguard_client_config }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  diff: false
+  vars:
+    wireguard_server_public_key: "{{ wireguard_public_keys.results[0].stdout }}"
+    wireguard_client_private_key: "{{ wireguard_client_key.content | b64decode | trim }}"

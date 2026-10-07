@@ -5,6 +5,7 @@
 #   keycloak      реплики Keycloak
 #   keycloak_db   PostgreSQL для Keycloak
 #   prometheus, grafana, test_backends
+#   vpn           jump-хост с WireGuard (только при нескольких ВМ, vpn.yml)
 # Сервисы могут жить на одной ВМ или на разных: адреса друг друга берут отсюда.
 
 # Частный адрес ВМ. Terraform пишет его в inventory; без этого — из фактов.

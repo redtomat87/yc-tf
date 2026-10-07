@@ -1,6 +1,6 @@
-# Пример разноса сервисов по нескольким ВМ: jump-хост и три ВМ с сервисами.
-# Скопируйте в terraform.tfvars и поправьте. Поля ВМ описаны в terraform.tfvars.sample,
-# здесь комментарии только о размещении.
+# Пример разноса сервисов по нескольким ВМ: jump-хост и три ВМ с сервисами. Так стенд
+# проверялся в облаке. Скопируйте в terraform.tfvars и поправьте. Подробное описание
+# каждого поля и значения по умолчанию — в terraform.tfvars.sample.
 #
 # Каждый сервис — группа inventory, ВМ перечисляет свои в ansible_groups. Правила разноса:
 #
@@ -32,51 +32,61 @@
 # история Prometheus) не переносятся, а pod'ы на прежней ВМ не удаляются — их нужно
 # остановить вручную.
 
-ssh_user            = "user"
-ssh_public_key_file = "~/.ssh/id_rsa.pub"
-# SSH открыт только на jump-хосте; лучше сузить до своего адреса.
-ssh_allowed_cidrs = ["0.0.0.0/0"]
-vpn_port          = 51820
+# Доступ
 
+ssh_user            = "user"              # пользователь cloud-init и inventory (не root и не ubuntu)
+ssh_public_key_file = "~/.ssh/id_rsa.pub" # ключ для входа; пароли и root в sshd запрещены
+# SSH открыт только на jump-хосте; лучше сузить до своего адреса, например ["203.0.113.10/32"].
+ssh_allowed_cidrs = ["0.0.0.0/0"]
+# UDP-порт WireGuard на jump-хосте; открыт всем: без верного ключа WireGuard не отвечает.
+vpn_port = 51820
+# public_tcp_ports и public_udp_ports — по умолчанию [80, 443] и [443], открыты только на ВМ web.
+
+# Метки на все ресурсы: ключ и значение — до 63 символов из a-z, 0-9, "-" и "_".
 common_labels = {
-  "project"    = "pet",
-  "user_email" = "mymail_at_mail_ru",
-  "managed_by" = "terraform"
+  "project"    = "pet",               # проект
+  "user_email" = "mymail_at_mail_ru", # владелец
+  "managed_by" = "terraform"          # чем создано
 }
 
+# Одна сеть и одна подсеть на все ВМ (правило 4). Подсети сети jump-хоста Terraform пишет
+# в inventory (vpn_routes): только они и адреса туннеля 10.99.0.0/24 идут в VPN.
 networks = {
-  angie-network = {
+  angie-network = { # имя сети
     subnets = {
-      angie-subnet = {
-        cidr_block = "192.168.10.0/24"
+      angie-subnet = {                 # имя подсети; на него ссылается subnet_name ВМ
+        cidr_block = "192.168.10.0/24" # частные адреса ВМ; не должна совпадать с вашей локальной сетью
       }
     }
   }
 }
 
+# ВМ: ключ — имя ВМ (hostname и имя в inventory). Не указанные поля — по умолчанию:
+# cores = 2, platform_id = standard-v3, image_family = ubuntu-2604-lts, диск network-ssd 20 GB.
 vms = {
   # Jump-хост: WireGuard и SSH. Адрес попадает в Endpoint клиентского конфига VPN;
   # без static_ip он меняется после остановки ВМ, тогда — terraform apply и vpn.yml.
   jump = {
-    labels         = { "environment" = "production", "role" = "jump" }
-    memory         = 1
-    core_fraction  = 20
-    preemptible    = true
-    static_ip      = false
+    labels         = { "environment" = "production", "role" = "jump" } # environment даёт группу inventory
+    memory         = 1                                                 # GB; WireGuard, node_exporter, fail2ban
+    core_fraction  = 20                                                # минимальная доля vCPU для standard-v3
+    preemptible    = true                                              # прерываемая: дешевле, работает не дольше 24 часов
+    static_ip      = false                                             # true — постоянный Endpoint для VPN
     network_name   = "angie-network"
     subnet_name    = "angie-subnet"
-    ansible_groups = ["vpn"]
+    ansible_groups = ["vpn"] # jump-хост; nat = true (по умолчанию) обязателен
   }
 
-  # Вход для пользователей: Angie, статика, тестовые бэкенды. 2 GB хватает.
+  # Вход для пользователей: Angie, статика, тестовые бэкенды. SSH — только через VPN.
   angie = {
-    labels         = { "environment" = "production", "role" = "webserver" }
-    memory         = 2
-    core_fraction  = 50
-    preemptible    = true
-    static_ip      = false
-    network_name   = "angie-network"
-    subnet_name    = "angie-subnet"
+    labels        = { "environment" = "production", "role" = "webserver" }
+    memory        = 2     # GB; Angie и 4 тестовых бэкенда
+    core_fraction = 50    # доля vCPU, %
+    preemptible   = true  # прерываемая
+    static_ip     = false # true — DNS-записи не устаревают после остановки ВМ
+    network_name  = "angie-network"
+    subnet_name   = "angie-subnet"
+    # Имена — те же, что server_name в angie_vhosts (ansible/group_vars/all/main.yml).
     dns_records    = ["angie", "angie-backend", "daily", "static", "auth", "grafana"]
     ansible_groups = ["web", "test_backends"]
   }
@@ -84,27 +94,29 @@ vms = {
   # WordPress с MySQL, база Keycloak и первая реплика Keycloak.
   apps-a = {
     labels         = { "environment" = "production", "role" = "apps" }
-    memory         = 4
-    core_fraction  = 50
-    preemptible    = true
-    nat            = false
+    memory         = 4     # GB; MySQL, WordPress, PostgreSQL, Keycloak
+    core_fraction  = 50    # доля vCPU, %
+    preemptible    = true  # прерываемая
+    nat            = false # без публичного адреса: доступ через VPN, выход в интернет через NAT-шлюз
     network_name   = "angie-network"
     subnet_name    = "angie-subnet"
     ansible_groups = ["wordpress", "keycloak_db", "keycloak"]
   }
 
-  # Вторая реплика Keycloak и мониторинг (Grafana — до 1 GB).
+  # Вторая реплика Keycloak и мониторинг.
   apps-b = {
     labels         = { "environment" = "production", "role" = "apps" }
-    memory         = 4
-    core_fraction  = 50
-    preemptible    = true
-    nat            = false
+    memory         = 4     # GB; Keycloak, Prometheus, Grafana (лимит Grafana — 1 GB)
+    core_fraction  = 50    # доля vCPU, %
+    preemptible    = true  # прерываемая
+    nat            = false # без публичного адреса
     network_name   = "angie-network"
     subnet_name    = "angie-subnet"
     ansible_groups = ["keycloak", "prometheus", "grafana"]
   }
 }
 
+# Зона доступности: в ней подсеть, диски, ВМ и статические адреса.
 zone_of_availability = "ru-central1-a"
-dns_zone             = "redtomat.ru."
+# DNS-зона: с точкой на конце, совпадает с site_domain в ansible/group_vars/all/main.yml.
+dns_zone = "redtomat.ru."

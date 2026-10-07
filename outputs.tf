@@ -3,7 +3,8 @@ output "internal_ip_addresses_with_names" {
 }
 
 output "external_ip_addresses_with_names" {
-  value = { for name, vm in module.compute.vms : name => vm.public_ip if vm.public_ip != null }
+  # Без nat провайдер отдаёт пустую строку, а не null.
+  value = { for name, vm in module.compute.vms : name => vm.public_ip if vm.public_ip != null && vm.public_ip != "" }
 }
 
 output "ansible_inventory_file" {

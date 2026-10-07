@@ -46,6 +46,14 @@ ansible/
   roles/wordpress roles/keycloak roles/monitoring roles/test_backends
 ```
 
+Ansible разложен по [standard layout](https://docs.ansible.com/projects/ansible/latest/tips_tricks/sample_setup.html)
+с одним отличием: инвентари собраны в `inventories/`. `group_vars/` лежит рядом с плейбуками
+и общий для обоих инвентарей: конфигурация облака и локального стенда одна, а `inventories/yc/`
+целиком генерирует Terraform. Это playbook group_vars, и по
+[приоритету](https://docs.ansible.com/projects/ansible/latest/playbook_guide/playbooks_variables.html#understanding-variable-precedence)
+они сильнее переменных группы из файла inventory, но слабее переменных хоста. Поэтому
+переопределения для стенда задаются на уровне хоста, как в `inventories/local/hosts.yml`.
+
 ## Подготовка
 
 Нужно на машине администратора: `yc`, Terraform ≥ 1.10, Ansible core ≥ 2.18,

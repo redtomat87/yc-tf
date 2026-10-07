@@ -63,6 +63,12 @@ module "ansible_inventory" {
       ansible_groups = local.vms[name].ansible_groups
     })
   }
-  ssh_user       = var.ssh_user
+  ssh_user  = var.ssh_user
+  jump_host = local.jump_host
+  # Порт WireGuard и сети, которые клиент VPN маршрутизирует в туннель.
+  vpn_vars = local.jump_host == null ? null : {
+    vpn_port   = var.vpn_port
+    vpn_routes = module.network.subnet_cidrs[var.vms[local.jump_host].network_name]
+  }
   inventory_file = "${path.root}/ansible/inventories/yc/hosts.yml"
 }

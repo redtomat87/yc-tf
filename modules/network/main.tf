@@ -158,3 +158,10 @@ output "security_group_ids" {
     }
   }
 }
+
+output "subnet_cidrs" {
+  description = "Subnet CIDR blocks per network name"
+  value = {
+    for network_name, network in var.networks : network_name => [for subnet in network.subnets : subnet.cidr_block]
+  }
+}

@@ -11,12 +11,11 @@ locals {
 
   inventory = {
     all = {
-      vars = {
-        ansible_user = var.ssh_user
-      }
+      vars = merge({ ansible_user = var.ssh_user }, var.vpn_vars)
       hosts = {
         for name, vm in var.vms : name => {
-          ansible_host = coalesce(vm.public_ip, vm.private_ip)
+          # С jump-хостом на остальные ВМ — по частному адресу через туннель VPN.
+          ansible_host = var.jump_host == null || name == var.jump_host ? coalesce(vm.public_ip, vm.private_ip) : vm.private_ip
           # Адрес для связи сервисов между ВМ (внутри security group).
           private_ip = vm.private_ip
         }

@@ -1,28 +1,30 @@
-# Пример разноса сервисов по трём ВМ. Так стенд проверялся в облаке.
+# Пример разноса сервисов по нескольким ВМ: jump-хост и три ВМ с сервисами.
 # Скопируйте в terraform.tfvars и поправьте. Поля ВМ описаны в terraform.tfvars.sample,
 # здесь комментарии только о размещении.
 #
 # Каждый сервис — группа inventory, ВМ перечисляет свои в ansible_groups. Правила разноса:
 #
-# 1. Одна точка входа. web (Angie) — единственная ВМ с DNS-записями: все vhost'ы живут
-#    на ней и проксируют на остальные ВМ по частным адресам. Если нужен постоянный
-#    адрес, static_ip ставится только ей.
-# 2. Одна сеть. Security group создаётся на сеть, а трафик между ВМ разрешён только
-#    внутри одной группы. ВМ из разных networks друг друга не видят.
-# 3. Публичный адрес нужен всем (nat = true по умолчанию): Ansible ходит на ВМ по нему,
-#    образы контейнеров качаются из интернета, NAT-шлюза в проекте нет. Снаружи
-#    открыты только SSH и public_*_ports, сервисы на частном IP закрыты.
-# 4. Лёгкое и нужное только Angie — рядом с Angie. test_backends на ВМ web: их трафик
+# 1. Управление — только через jump-хост (группа vpn): из интернета на нём открыты SSH
+#    (ssh_allowed_cidrs) и WireGuard (vpn_port). Остальные ВМ Ansible настраивает по
+#    частным адресам через туннель: сначала vpn.yml, потом подключить VPN, потом site.yml.
+# 2. Одна точка входа для пользователей. web (Angie) — единственная ВМ с DNS-записями
+#    и открытыми public_*_ports; SSH на неё снаружи закрыт. Vhost'ы проксируют на
+#    остальные ВМ по частным адресам. Если нужен постоянный адрес, static_ip — ей.
+# 3. Остальные ВМ без публичного адреса (nat = false): из интернета до них не достать,
+#    а наружу (образы, apt) они ходят через NAT-шлюз, который Terraform создаёт сам.
+# 4. Одна сеть. Трафик между ВМ разрешён внутри security group сети, и туннель видит
+#    только сеть jump-хоста. Terraform проверяет, что все ВМ в ней.
+# 5. Лёгкое и нужное только Angie — рядом с Angie. test_backends на ВМ web: их трафик
 #    не уходит в сеть, порты остаются на 127.0.0.1.
-# 5. Реплики Keycloak — на разных ВМ: кластер (JGroups по частным IP) переживает потерю
+# 6. Реплики Keycloak — на разных ВМ: кластер (JGroups по частным IP) переживает потерю
 #    одной ВМ. На одной ВМ группа keycloak даёт 2 реплики, на нескольких — по одной на ВМ.
-# 6. База рядом с потребителем. keycloak_db — на ВМ с одной из реплик: та ходит к ней
+# 7. База рядом с потребителем. keycloak_db — на ВМ с одной из реплик: та ходит к ней
 #    по имени pod'а, остальные по частному IP. MySQL WordPress живёт в его pod'е.
-# 7. Prometheus и Grafana вместе: источник данных Grafana — локальный. Prometheus
+# 8. Prometheus и Grafana вместе: источник данных Grafana — локальный. Prometheus
 #    собирает node_exporter и podman-exporter со всех ВМ, Ansible сам публикует их
 #    на частном IP там, где Prometheus на другой ВМ.
 #
-# Группы web, wordpress, keycloak_db, prometheus, grafana и test_backends — ровно
+# Группы vpn, web, wordpress, keycloak_db, prometheus, grafana и test_backends — ровно
 # на одной ВМ каждая, keycloak — на любом числе.
 #
 # Перенос группы на другую ВМ: поправить ansible_groups, terraform apply (inventory
@@ -32,7 +34,9 @@
 
 ssh_user            = "user"
 ssh_public_key_file = "~/.ssh/id_rsa.pub"
-ssh_allowed_cidrs   = ["0.0.0.0/0"]
+# SSH открыт только на jump-хосте; лучше сузить до своего адреса.
+ssh_allowed_cidrs = ["0.0.0.0/0"]
+vpn_port          = 51820
 
 common_labels = {
   "project"    = "pet",
@@ -51,7 +55,20 @@ networks = {
 }
 
 vms = {
-  # Вход: Angie, статика, тестовые бэкенды. 2 GB хватает.
+  # Jump-хост: WireGuard и SSH. Адрес попадает в Endpoint клиентского конфига VPN;
+  # без static_ip он меняется после остановки ВМ, тогда — terraform apply и vpn.yml.
+  jump = {
+    labels         = { "environment" = "production", "role" = "jump" }
+    memory         = 1
+    core_fraction  = 20
+    preemptible    = true
+    static_ip      = false
+    network_name   = "angie-network"
+    subnet_name    = "angie-subnet"
+    ansible_groups = ["vpn"]
+  }
+
+  # Вход для пользователей: Angie, статика, тестовые бэкенды. 2 GB хватает.
   angie = {
     labels         = { "environment" = "production", "role" = "webserver" }
     memory         = 2
@@ -70,6 +87,7 @@ vms = {
     memory         = 4
     core_fraction  = 50
     preemptible    = true
+    nat            = false
     network_name   = "angie-network"
     subnet_name    = "angie-subnet"
     ansible_groups = ["wordpress", "keycloak_db", "keycloak"]
@@ -81,6 +99,7 @@ vms = {
     memory         = 4
     core_fraction  = 50
     preemptible    = true
+    nat            = false
     network_name   = "angie-network"
     subnet_name    = "angie-subnet"
     ansible_groups = ["keycloak", "prometheus", "grafana"]

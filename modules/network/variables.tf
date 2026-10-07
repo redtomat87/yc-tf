@@ -25,3 +25,8 @@ variable "public_tcp_ports" {
 variable "public_udp_ports" {
   type = list(number)
 }
+
+variable "nat_gateway_networks" {
+  description = "Networks with VMs that have no public IP"
+  type        = set(string)
+}

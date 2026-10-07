@@ -29,6 +29,30 @@ resource "yandex_vpc_subnet" "vm-subnet" {
   network_id     = yandex_vpc_network.vm-network[each.value.network_name].id
   v4_cidr_blocks = [each.value.cidr_block]
   labels         = var.common_labels
+  route_table_id = contains(var.nat_gateway_networks, each.value.network_name) ? yandex_vpc_route_table.egress[each.value.network_name].id : null
+}
+
+# ВМ без публичного адреса выходят в интернет (образы, apt) через NAT-шлюз.
+# ВМ с публичным адресом в тех же подсетях ходят через свой адрес.
+resource "yandex_vpc_gateway" "egress" {
+  count = length(var.nat_gateway_networks) > 0 ? 1 : 0
+
+  name   = "vm-egress"
+  labels = var.common_labels
+  shared_egress_gateway {}
+}
+
+resource "yandex_vpc_route_table" "egress" {
+  for_each = var.nat_gateway_networks
+
+  name       = "${each.key}-egress"
+  network_id = yandex_vpc_network.vm-network[each.key].id
+  labels     = var.common_labels
+
+  static_route {
+    destination_prefix = "0.0.0.0/0"
+    gateway_id         = yandex_vpc_gateway.egress[0].id
+  }
 }
 
 # Снаружи открыты только SSH и веб. Всё остальное (контейнеры, экспортеры)

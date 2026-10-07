@@ -4,6 +4,8 @@ locals {
       labels = merge(var.common_labels, vm.labels)
     })
   }
+
+  nat_gateway_networks = toset([for vm in var.vms : vm.network_name if !vm.nat])
 }
 
 module "network" {
@@ -14,6 +16,7 @@ module "network" {
   ssh_allowed_cidrs    = var.ssh_allowed_cidrs
   public_tcp_ports     = var.public_tcp_ports
   public_udp_ports     = var.public_udp_ports
+  nat_gateway_networks = local.nat_gateway_networks
 }
 
 module "compute" {

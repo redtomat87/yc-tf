@@ -1,4 +1,5 @@
 # Этот файл содержит переменные для Terraform. Скопируйте в terraform.tfvars и поправьте.
+# Здесь всё на одной ВМ; разнос по нескольким ВМ с jump-хостом — terraform-multivm.tfvars.sample.
 
 # Доступ к ВМ
 
@@ -7,36 +8,42 @@
 ssh_user = "user"
 
 # Путь до вашего публичного SSH-ключа. cloud-init положит его в authorized_keys пользователя ssh_user.
+# Вход на ВМ — только по этому ключу: пароли и root в sshd запрещены (роль base).
 ssh_public_key_file = "~/.ssh/id_rsa.pub"
 
 # Откуда разрешён SSH (security group). Лучше сузить до своего адреса, например ["203.0.113.10/32"].
+# По умолчанию ["0.0.0.0/0"].
 ssh_allowed_cidrs = ["0.0.0.0/0"]
 
-# Порты, открытые в интернет. Остальное (контейнеры, экспортеры) слушает 127.0.0.1, а если
-# потребитель на другой ВМ — ещё частный IP, доступный только внутри security group.
-public_tcp_ports = [80, 443]
-public_udp_ports = [443] # HTTP/3
+# Порты, открытые в интернет на ВМ с группой web. Остальное (контейнеры, экспортеры) слушает
+# 127.0.0.1, а если потребитель на другой ВМ — ещё частный IP, доступный только внутри сети.
+public_tcp_ports = [80, 443] # HTTP и HTTPS; по умолчанию [80, 443]
+public_udp_ports = [443]     # HTTP/3 (QUIC); по умолчанию [443]
+
+# vpn_port (51820) — порт WireGuard, нужен только с jump-хостом (группа vpn).
 
 # Общие метки
 
-# Общие метки, которые будут применены ко всем ресурсам (виртуальным машинам, дискам и т.д.).
-# Используются для организации и фильтрации ресурсов в Yandex Cloud.
+# Метки на все ресурсы (ВМ, диски, сети, security groups, DNS-зону). Ключ — с буквы, ключ и значение —
+# до 63 символов из a-z, 0-9, "-" и "_" (поэтому "@" и "." в e-mail заменены).
 common_labels = {
-  "project"    = "pet",
-  "user_email" = "mymail_at_mail_ru",
-  "managed_by" = "terraform"
+  "project"    = "pet",               # проект
+  "user_email" = "mymail_at_mail_ru", # владелец
+  "managed_by" = "terraform"          # чем создано
 }
 
 # Конфигурация сетей и подсетей
 
-# Сети и их подсети. Каждая сеть может иметь несколько подсетей; на каждую сеть создаётся своя security group.
+# Сети и их подсети. На сеть создаются security groups: <сеть>-vm (трафик между ВМ сети и выход
+# в интернет), <сеть>-ssh, <сеть>-public, а с jump-хостом — ещё <сеть>-vpn; ВМ получают их по роли.
+# ВМ из разных сетей друг друга не видят. Все подсети — в zone_of_availability.
 networks = {
-  angie-network = {
+  angie-network = { # имя сети
     subnets = {
-      angie-subnet = {
-        cidr_block = "192.168.10.0/24"
+      angie-subnet = {                 # имя подсети; на него ссылается subnet_name ВМ
+        cidr_block = "192.168.10.0/24" # частные адреса ВМ этой подсети
       }
-      angie-subnet-1 = {
+      angie-subnet-1 = { # вторая подсеть — для примера ВМ example ниже
         cidr_block = "192.168.20.0/24"
       }
     }
@@ -45,20 +52,22 @@ networks = {
 
 # Конфигурация виртуальных машин (Yandex Compute Cloud)
 
-# Ключ — имя ВМ (уникальное, 3-63 символа: a-z, 0-9, дефис). Обязательны только network_name и subnet_name,
-# остальное имеет значения по умолчанию (указаны в комментариях).
+# Ключ — имя ВМ (уникальное, 3-63 символа: a-z, 0-9, дефис); оно же hostname и имя в inventory.
+# Обязательны только network_name и subnet_name, остальное имеет значения по умолчанию (в скобках).
 ## Сайзинг: https://yandex.cloud/ru/docs/compute/concepts/performance-levels
 vms = {
   angie = {
-    # Метки ВМ. Дополняют common_labels. По label environment в inventory создаётся одноимённая группа.
+    # Метки ВМ. Дополняют common_labels. По метке environment в inventory создаётся одноимённая
+    # группа (здесь production); role — только для поиска в консоли. По умолчанию {}.
     labels = {
       "environment" = "production"
       "role"        = "webserver"
     }
     # Группы ansible inventory для этой ВМ (a-z, 0-9, _): какие сервисы на ней работают.
     # web — Angie и статика (на эту ВМ указывают dns_records), wordpress, keycloak (реплики),
-    # keycloak_db, prometheus, grafana, test_backends. Сервисы можно разнести по разным ВМ:
-    # адреса друг друга они берут из inventory (пример — terraform-multivm.tfvars.sample). По умолчанию [].
+    # keycloak_db, prometheus, grafana, test_backends; vpn — jump-хост, только при нескольких ВМ.
+    # Сервисы можно разнести по разным ВМ: адреса друг друга они берут из inventory
+    # (пример — terraform-multivm.tfvars.sample). По умолчанию [].
     ansible_groups = ["web", "wordpress", "keycloak", "keycloak_db", "prometheus", "grafana", "test_backends"]
 
     # Количество ядер CPU (2).
@@ -82,7 +91,8 @@ vms = {
     # Диск удаляется только вместе с ВМ из vms (terraform destroy или удаление записи);
     # при пересоздании ВМ (например, при переключении static_ip) он сохраняется.
 
-    # Публичный адрес (true).
+    # Публичный адрес (true). false — ВМ без публичного адреса: в интернет она ходит через NAT-шлюз,
+    # который создаётся автоматически, а Ansible достаёт её только через jump-хост (группа vpn).
     nat = true
     # Зарезервировать статический публичный адрес (false). Без него адрес меняется при перезапуске
     # ВМ, и DNS-записи устаревают. Требует nat = true. При переключении в false адрес удаляется.
@@ -90,6 +100,8 @@ vms = {
     static_ip = false
 
     # DNS-записи в зоне dns_zone: "angie" даёт angie.redtomat.ru. Требуют nat = true. По умолчанию [].
+    # Имена — те же, что server_name в angie_vhosts (ansible/group_vars/all/main.yml): сертификат
+    # один на все vhost'ы, и без записи хотя бы одного имени он не выпускается.
     dns_records = ["angie", "angie-backend", "daily", "static", "auth", "grafana"]
 
     # Сеть и подсеть из networks.
@@ -107,8 +119,10 @@ vms = {
 # Конфигурация DNS
 # Для корректной конфигурации DNS требуется делегирование вашего домена на Cloud DNS серверы yandex см. [документацию](https://yandex.cloud/ru/docs/troubleshooting/dns/how-to/delegate-public-zone)
 
-# Зона доступности в Yandex Cloud.
+# Зона доступности в Yandex Cloud: в ней создаются подсети, диски, ВМ и статические адреса.
 zone_of_availability = "ru-central1-a"
 
-# Имя DNS зоны. Должно заканчиваться точкой.
+# Публичная DNS-зона (yandex_dns_zone в dns.tf, защищена от удаления). Должно заканчиваться точкой
+# и совпадать с site_domain в ansible/group_vars/all/main.yml. Смена имени пересоздаёт зону,
+# а deletion_protection это запрещает: сначала снимите защиту.
 dns_zone = "redtomat.ru."

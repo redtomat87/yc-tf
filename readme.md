@@ -123,6 +123,8 @@ apps-a = { ..., ansible_groups = ["wordpress", "keycloak_db", "keycloak"] }
 apps-b = { ..., ansible_groups = ["keycloak", "prometheus", "grafana"] }
 ```
 
+Полный пример с правилами разноса — `terraform-multivm.tfvars.sample`.
+
 Адреса друг друга сервисы берут из inventory (`group_vars/all/topology.yml`): на
 той же ВМ — 127.0.0.1, на другой — частный IP (`private_ip`, его пишет Terraform).
 Порт публикуется на частном IP, только если потребитель на другой ВМ; снаружи

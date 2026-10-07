@@ -58,7 +58,7 @@ vms = {
     # Группы ansible inventory для этой ВМ (a-z, 0-9, _): какие сервисы на ней работают.
     # web — Angie и статика (на эту ВМ указывают dns_records), wordpress, keycloak (реплики),
     # keycloak_db, prometheus, grafana, test_backends. Сервисы можно разнести по разным ВМ:
-    # адреса друг друга они берут из inventory. По умолчанию [].
+    # адреса друг друга они берут из inventory (пример — terraform-multivm.tfvars.sample). По умолчанию [].
     ansible_groups = ["web", "wordpress", "keycloak", "keycloak_db", "prometheus", "grafana", "test_backends"]
 
     # Количество ядер CPU (2).

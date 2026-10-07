@@ -1,0 +1,91 @@
+# Пример разноса сервисов по трём ВМ. Так стенд проверялся в облаке.
+# Скопируйте в terraform.tfvars и поправьте. Поля ВМ описаны в terraform.tfvars.sample,
+# здесь комментарии только о размещении.
+#
+# Каждый сервис — группа inventory, ВМ перечисляет свои в ansible_groups. Правила разноса:
+#
+# 1. Одна точка входа. web (Angie) — единственная ВМ с DNS-записями: все vhost'ы живут
+#    на ней и проксируют на остальные ВМ по частным адресам. Если нужен постоянный
+#    адрес, static_ip ставится только ей.
+# 2. Одна сеть. Security group создаётся на сеть, а трафик между ВМ разрешён только
+#    внутри одной группы. ВМ из разных networks друг друга не видят.
+# 3. Публичный адрес нужен всем (nat = true по умолчанию): Ansible ходит на ВМ по нему,
+#    образы контейнеров качаются из интернета, NAT-шлюза в проекте нет. Снаружи
+#    открыты только SSH и public_*_ports, сервисы на частном IP закрыты.
+# 4. Лёгкое и нужное только Angie — рядом с Angie. test_backends на ВМ web: их трафик
+#    не уходит в сеть, порты остаются на 127.0.0.1.
+# 5. Реплики Keycloak — на разных ВМ: кластер (JGroups по частным IP) переживает потерю
+#    одной ВМ. На одной ВМ группа keycloak даёт 2 реплики, на нескольких — по одной на ВМ.
+# 6. База рядом с потребителем. keycloak_db — на ВМ с одной из реплик: та ходит к ней
+#    по имени pod'а, остальные по частному IP. MySQL WordPress живёт в его pod'е.
+# 7. Prometheus и Grafana вместе: источник данных Grafana — локальный. Prometheus
+#    собирает node_exporter и podman-exporter со всех ВМ, Ansible сам публикует их
+#    на частном IP там, где Prometheus на другой ВМ.
+#
+# Группы web, wordpress, keycloak_db, prometheus, grafana и test_backends — ровно
+# на одной ВМ каждая, keycloak — на любом числе.
+#
+# Перенос группы на другую ВМ: поправить ansible_groups, terraform apply (inventory
+# перегенерируется), ansible-playbook site.yml. Данные (базы WordPress и Keycloak,
+# история Prometheus) не переносятся, а pod'ы на прежней ВМ не удаляются — их нужно
+# остановить вручную.
+
+ssh_user            = "user"
+ssh_public_key_file = "~/.ssh/id_rsa.pub"
+ssh_allowed_cidrs   = ["0.0.0.0/0"]
+
+common_labels = {
+  "project"    = "pet",
+  "user_email" = "mymail_at_mail_ru",
+  "managed_by" = "terraform"
+}
+
+networks = {
+  angie-network = {
+    subnets = {
+      angie-subnet = {
+        cidr_block = "192.168.10.0/24"
+      }
+    }
+  }
+}
+
+vms = {
+  # Вход: Angie, статика, тестовые бэкенды. 2 GB хватает.
+  angie = {
+    labels         = { "environment" = "production", "role" = "webserver" }
+    memory         = 2
+    core_fraction  = 50
+    preemptible    = true
+    static_ip      = false
+    network_name   = "angie-network"
+    subnet_name    = "angie-subnet"
+    dns_records    = ["angie", "angie-backend", "daily", "static", "auth", "grafana"]
+    ansible_groups = ["web", "test_backends"]
+  }
+
+  # WordPress с MySQL, база Keycloak и первая реплика Keycloak.
+  apps-a = {
+    labels         = { "environment" = "production", "role" = "apps" }
+    memory         = 4
+    core_fraction  = 50
+    preemptible    = true
+    network_name   = "angie-network"
+    subnet_name    = "angie-subnet"
+    ansible_groups = ["wordpress", "keycloak_db", "keycloak"]
+  }
+
+  # Вторая реплика Keycloak и мониторинг (Grafana — до 1 GB).
+  apps-b = {
+    labels         = { "environment" = "production", "role" = "apps" }
+    memory         = 4
+    core_fraction  = 50
+    preemptible    = true
+    network_name   = "angie-network"
+    subnet_name    = "angie-subnet"
+    ansible_groups = ["keycloak", "prometheus", "grafana"]
+  }
+}
+
+zone_of_availability = "ru-central1-a"
+dns_zone             = "redtomat.ru."

@@ -2,19 +2,26 @@
 # Структура group_vars/all/vault.yml (шифруется ansible-vault, пароль в ansible/.vault):
 #   ansible-vault create group_vars/all/vault.yml
 #   ansible-vault edit   group_vars/all/vault.yml
+#
+# Пароли баз, Keycloak и Grafana применяются только при первом запуске, на пустых
+# томах: MySQL, PostgreSQL, Grafana и Keycloak потом их не перечитывают. Смена значения
+# здесь после этого рассинхронизирует сервис и его базу — меняйте пароль и в самом сервисе.
 
-# Basic auth для /console, /prometheus и тестовых бэкендов
+# Basic auth Angie для /console, /prometheus и тестовых бэкендов. Пользователей
+# может быть несколько; htpasswd пересобирается на каждом прогоне.
 vault_basic_auth_users:
-  - name: admin
-    password: change-me
-# 16 символов из [./0-9A-Za-z]: соль sha512-crypt, постоянная, чтобы htpasswd не менялся
+  - name: admin          # логин
+    password: change-me  # пароль
+# 16 символов из [./0-9A-Za-z]: соль sha512-crypt для htpasswd. Постоянная, чтобы файл
+# не менялся на каждом прогоне и Angie не перезагружался зря.
 vault_basic_auth_salt: abcdefghABCDEFGH
 
-# WordPress + MySQL
-vault_mysql_root_password: change-me
-vault_wordpress_db_password: change-me
-vault_mysqld_exporter_password: change-me
-# https://api.wordpress.org/secret-key/1.1/salt/
+# WordPress + MySQL (только при первом запуске pod'а wordpress)
+vault_mysql_root_password: change-me       # root MySQL
+vault_wordpress_db_password: change-me     # пользователь wordpress, им ходит WordPress
+vault_mysqld_exporter_password: change-me  # пользователь exporter, им ходит mysqld_exporter
+# Ключи и соли wp-config.php; сгенерировать: https://api.wordpress.org/secret-key/1.1/salt/
+# Смена разлогинивает всех пользователей WordPress.
 vault_wordpress_salts:
   AUTH_KEY: change-me
   SECURE_AUTH_KEY: change-me
@@ -25,10 +32,13 @@ vault_wordpress_salts:
   LOGGED_IN_SALT: change-me
   NONCE_SALT: change-me
 
-# Keycloak + PostgreSQL
-vault_keycloak_db_password: change-me
-vault_keycloak_admin_password: change-me
+# Keycloak + PostgreSQL (только при первом запуске)
+vault_keycloak_db_password: change-me     # пользователь keycloak в PostgreSQL
+vault_keycloak_admin_password: change-me  # admin в realm master (консоль auth.<домен>/admin)
 
-# Grafana: локальный admin и секрет OAuth-клиента в Keycloak
+# Grafana
+# Пароль admin: локального администратора Grafana и пользователя admin в realm grafana
+# Keycloak, через которого входят в Grafana (роль grafana-admin даёт Admin).
 vault_grafana_admin_password: change-me
+# Секрет OAuth-клиента grafana в Keycloak; одно значение получают и Keycloak, и Grafana.
 vault_grafana_oauth_client_secret: change-me

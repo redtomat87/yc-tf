@@ -16,7 +16,8 @@
 - консоль Angie — angie.redtomat.ru/console/.
 
 Снаружи открыты только 22, 80, 443/tcp и 443/udp (security group). Всё
-остальное слушает 127.0.0.1, вход — только через Angie.
+остальное слушает 127.0.0.1, вход — только через Angie. При нескольких ВМ SSH
+снаружи открыт только на jump-хосте с WireGuard (раздел «Jump-хост и VPN»).
 
 Схема: [docs/architecture.drawio](docs/architecture.drawio).
 
@@ -26,19 +27,20 @@
 bootstrap/                  бакет Object Storage для state + сервисный аккаунт (свой локальный state)
 versions.tf backend.tf      версии, s3 backend с use_lockfile
 variables.tf main.tf        ВМ описываются map'ой vms в terraform.tfvars (пример — terraform.tfvars.sample)
-modules/network             VPC, подсети, security group
+modules/network             VPC, подсети, security groups по ролям, NAT-шлюз
 modules/compute             образ по family, диск, ВМ, статический IP, cloud-init
 modules/dns_records         A-записи в зоне dns_zone
 modules/ansible_inventory   ansible/inventories/yc/hosts.yml
 ansible/
-  site.yml                  всё по порядку: base -> podman -> web -> apps -> verify
-  base.yml podman.yml web.yml apps.yml verify.yml acme-backup.yml
+  site.yml                  всё по порядку: vpn -> base -> podman -> web -> apps -> verify
+  vpn.yml base.yml podman.yml web.yml apps.yml verify.yml acme-backup.yml
   group_vars/all/main.yml   домены, порты, vhost'ы, слоты UserNS
   group_vars/all/topology.yml  где какие сервисы: группы, адреса между ВМ, реплики Keycloak
   group_vars/all/vault.yml  секреты (ansible-vault, пароль в ansible/.vault); структура — vault.yml.example
   inventories/yc            генерирует Terraform
   inventories/local         локальный стенд (libvirt), LE staging
-  roles/base                пакеты, AppArmor, node_exporter, fail2ban
+  roles/base                пакеты, AppArmor, node_exporter, fail2ban, SSH только по ключу
+  roles/wireguard           jump-хост: WireGuard, NAT клиентов, клиентский конфиг в ansible/files/wireguard
   roles/podman              Podman 6 из OBS home:alvistack с apt pinning
   roles/podman_kube         общий механизм: манифест + Quadlet .kube, рестарт, ожидание healthy
   roles/angie               angie.conf + http.d/*, проверка angie -t и откат, ACME, AppArmor
@@ -99,6 +101,7 @@ terraform apply
   не умеет снять статический адрес с работающей ВМ, а API не удаляет занятый адрес.
   Диск, данные и ключи хоста сохраняются;
 - `dns_records` — A-записи в `dns_zone`;
+- `nat = false` — ВМ без публичного адреса; нужен jump-хост (раздел «Jump-хост и VPN»);
 - `ssh_user` (по умолчанию `user`) создаёт cloud-init, это же имя попадает в inventory.
 
 ### Размещение сервисов
@@ -113,6 +116,7 @@ terraform apply
 | `keycloak` | реплики Keycloak | одна ВМ — 2 реплики, несколько — по реплике на ВМ |
 | `prometheus`, `grafana` | мониторинг | по одной ВМ |
 | `test_backends` | 4 тестовых бэкенда | одна ВМ |
+| `vpn` | jump-хост: WireGuard, SSH снаружи | одна ВМ; только при нескольких ВМ |
 
 Все на одной ВМ — как в `terraform.tfvars.sample`. Разнести — раздать группы
 разным ВМ, например:
@@ -136,6 +140,58 @@ apps-b = { ..., ansible_groups = ["keycloak", "prometheus", "grafana"] }
 другой ВМ недоступен. К PostgreSQL реплика ходит по имени pod'а, если он на той же
 ВМ, иначе по частному IP.
 
+### Jump-хост и VPN
+
+При нескольких ВМ управлять ими лучше через одну точку входа. ВМ с группой `vpn` —
+jump-хост с WireGuard; тогда Terraform раздаёт security groups по ролям:
+
+| ВМ | открыто из интернета |
+|---|---|
+| jump-хост (`vpn`) | SSH из `ssh_allowed_cidrs`, WireGuard `vpn_port` (51820/udp) |
+| с группой `web` | `public_tcp_ports`, `public_udp_ports`; SSH — нет |
+| остальные | ничего; у них `nat = false`, публичного адреса нет |
+
+Между ВМ сети трафик разрешён (security group `<сеть>-vm`). ВМ без публичного
+адреса ходят в интернет за образами и пакетами через
+[NAT-шлюз](https://yandex.cloud/ru/docs/vpc/concepts/gateways): Terraform создаёт
+его и таблицу маршрутов `0.0.0.0/0`, если в сети есть ВМ с `nat = false`. ВМ с
+публичным адресом ходят через свой адрес. Шлюз
+[тарифицируется](https://yandex.cloud/ru/docs/vpc/pricing) почасово и по трафику.
+Без jump-хоста SSH открыт на всех ВМ с публичным адресом, веб — на ВМ с группой `web`.
+
+Terraform проверяет: jump-хост один, с `nat = true`, все ВМ в его сети, а ВМ с
+`nat = false` без jump-хоста не создаются. В inventory jump-хост записан по
+публичному адресу, остальные ВМ — по частному, и `vpn_port`/`vpn_routes` (подсети
+сети) — в `all.vars`. Пример — `terraform-multivm.tfvars.sample`.
+
+Первое развёртывание — в три шага, потому что до туннеля Ansible видит только
+jump-хост:
+
+```bash
+cd ansible
+ansible-playbook vpn.yml                              # WireGuard на jump-хосте
+sudo wg-quick up files/wireguard/wg-jump.conf          # или: nmcli connection import type wireguard file files/wireguard/wg-jump.conf
+ansible-playbook site.yml
+```
+
+Дальше `site.yml` работает при поднятом туннеле. Роль `wireguard`:
+
+- создаёт ключи сервера и клиента один раз (`/etc/wireguard/*.key`), закрытый ключ
+  сервера в конфиг не попадает — его подставляет `PostUp`;
+- кладёт клиентский конфиг в `ansible/files/wireguard/wg-<хост>.conf` (0600, не в
+  git): клиент — `10.99.0.2`, в туннель идут `10.99.0.0/24` и подсети из
+  `vpn_routes`, `Endpoint` — публичный адрес jump-хоста. Без `static_ip` он меняется
+  после остановки ВМ: тогда `terraform apply`, `vpn.yml` и переподключиться;
+- маскирует трафик клиента адресом jump-хоста: остальным ВМ не нужен маршрут
+  обратно в туннель, и security group видит трафик своей ВМ. Правила nftables
+  заданы командами в `PostUp`, а не файлом: AppArmor-профиль `wg-quick` из Ubuntu
+  26.04 не даёт `nft` читать файлы.
+
+На всех ВМ (роль `base`) SSH пускает только по ключу и не под root:
+`/etc/ssh/sshd_config.d/10-hardening.conf` с `AuthenticationMethods publickey`,
+`PermitRootLogin no`; файл раньше `50-cloud-init.conf`, а в sshd действует первое
+значение. fail2ban с jail `sshd` — на всех ВМ.
+
 ## Развёртывание
 
 ```bash
@@ -149,7 +205,7 @@ ansible-playbook verify.yml                        # только проверк
 ansible-playbook acme-backup.yml                   # снять копию сертификатов в ansible/files/
 ```
 
-Теги компонентов: `base`, `podman`, `static_site`, `angie`, `wordpress`,
+Теги компонентов: `wireguard`, `base`, `podman`, `static_site`, `angie`, `wordpress`,
 `keycloak` (`keycloak_db`), `monitoring` (`prometheus`, `grafana`,
 `podman_exporter`), `test_backends`. Слои: `install`, `config`, `verify`, а также
 `<роль>_install`/`<роль>_config`. Повторный прогон даёт `changed=0`.
@@ -242,4 +298,6 @@ ansible-playbook acme-backup.yml
 terraform destroy -target=module.compute -target=module.network -target=module.dns -target=module.ansible_inventory
 ```
 
-DNS-зона защищена `deletion_protection` и остаётся; бакет state — тоже.
+DNS-зона защищена `deletion_protection` и остаётся; бакет state — тоже. Туннель
+после этого опустить: `sudo wg-quick down files/wireguard/wg-jump.conf` (или
+`nmcli connection down wg-jump`).

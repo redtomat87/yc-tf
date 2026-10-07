@@ -29,12 +29,12 @@
         <mxCell id="ip" value="Публичный IP&lt;br&gt;динамический или static_ip" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="800" y="45" width="210" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="sg" value="&lt;b&gt;Security group&lt;/b&gt;&lt;br&gt;in: 22 (ssh_allowed_cidrs),&lt;br&gt;80, 443/tcp, 443/udp&lt;br&gt;out: any" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="260" y="600" width="160" height="110" as="geometry" />
+        <mxCell id="sg" value="&lt;b&gt;Security groups&lt;/b&gt;&lt;br&gt;&amp;lt;сеть&amp;gt;-ssh: 22 из ssh_allowed_cidrs&lt;br&gt;&amp;lt;сеть&amp;gt;-public: 80, 443/tcp, 443/udp&lt;br&gt;&amp;lt;сеть&amp;gt;-vm: между ВМ, out: any" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="250" y="590" width="190" height="130" as="geometry" />
         </mxCell>
 
         <!-- ===== ВМ ===== -->
-        <mxCell id="vm" value="ВМ Ubuntu 26.04 — cloud-init (ssh_user), AppArmor enforce. Все группы на одной ВМ: web, wordpress, keycloak, keycloak_db, prometheus, grafana, test_backends — связи через 127.0.0.1 (разнос по ВМ — лист «Три ВМ»)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="vm" value="ВМ Ubuntu 26.04 — cloud-init (ssh_user), AppArmor enforce. Все группы на одной ВМ: web, wordpress, keycloak, keycloak_db, prometheus, grafana, test_backends — связи через 127.0.0.1 (разнос по ВМ с jump-хостом — лист «Несколько ВМ»)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="450" y="170" width="1790" height="1380" as="geometry" />
         </mxCell>
 
@@ -42,8 +42,8 @@
         <mxCell id="angie" value="&lt;b&gt;Angie&lt;/b&gt; (хост, профиль AppArmor angie)&lt;br&gt;:80 → 301 + ACME http-01&lt;br&gt;:443 tcp/udp, неизвестный SNI отклоняется&lt;br&gt;SAN-сертификат site_rsa + site_ecdsa,&lt;br&gt;общий account.key&lt;br&gt;127.0.0.1:8079 /status/, /metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;" vertex="1" parent="1">
           <mxGeometry x="490" y="560" width="300" height="170" as="geometry" />
         </mxCell>
-        <mxCell id="hostsvc" value="&lt;b&gt;Хост&lt;/b&gt;: node_exporter 127.0.0.1:9100&lt;br&gt;fail2ban: sshd, angie auth / limit_req&lt;br&gt;/etc/hosts: 127.0.0.1 auth.redtomat.ru" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="490" y="1000" width="300" height="80" as="geometry" />
+        <mxCell id="hostsvc" value="&lt;b&gt;Хост&lt;/b&gt;: node_exporter 127.0.0.1:9100&lt;br&gt;sshd: только ключ, root запрещён&lt;br&gt;fail2ban: sshd, angie auth / limit_req&lt;br&gt;/etc/hosts: 127.0.0.1 auth.redtomat.ru" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="490" y="990" width="300" height="95" as="geometry" />
         </mxCell>
         <mxCell id="podman" value="&lt;b&gt;Podman 6&lt;/b&gt; (OBS alvistack), rootful&lt;br&gt;Kubernetes YAML + Quadlet .kube&lt;br&gt;UserNS=auto, слот UID на pod&lt;br&gt;AppArmor containers-default&lt;br&gt;порты только 127.0.0.1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="490" y="1130" width="300" height="110" as="geometry" />
@@ -184,32 +184,28 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="Три ВМ" id="yc-vm-multi">
-    <mxGraphModel dx="2400" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1560" math="0" shadow="0">
+  <diagram name="Несколько ВМ" id="yc-vm-multi">
+    <mxGraphModel dx="2400" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="1860" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-
-        <!-- ===== Внешнее ===== -->
-        <mxCell id="m_admin" value="&lt;b&gt;Машина администратора&lt;/b&gt;&lt;br&gt;terraform, ansible, yc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="20" y="40" width="190" height="70" as="geometry" />
+        <mxCell id="m_admin" value="&lt;b&gt;Машина администратора&lt;/b&gt;&lt;br&gt;terraform, ansible, yc&lt;br&gt;WireGuard-клиент 10.99.0.2&lt;br&gt;(wg-jump.conf)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="190" height="90" as="geometry" />
         </mxCell>
         <mxCell id="m_users" value="Пользователи&lt;br&gt;HTTPS, HTTP/2, HTTP/3" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="20" y="540" width="170" height="100" as="geometry" />
+          <mxGeometry x="20" y="840" width="170" height="100" as="geometry" />
         </mxCell>
         <mxCell id="m_le" value="Let's Encrypt&lt;br&gt;ACME http-01" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="20" y="720" width="170" height="90" as="geometry" />
+          <mxGeometry x="20" y="1020" width="170" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="m_legend" value="&lt;b&gt;Связи&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#d6001c&quot;&gt;━━ &lt;/font&gt;внешний трафик&lt;br&gt;&lt;font color=&quot;#ff8000&quot;&gt;━━ &lt;/font&gt;Angie → бэкенд&lt;br&gt;&lt;font color=&quot;#0050ef&quot;&gt;━━ &lt;/font&gt;базы данных&lt;br&gt;&lt;font color=&quot;#7f00ff&quot;&gt;━━ &lt;/font&gt;кластер Keycloak (JGroups)&lt;br&gt;&lt;font color=&quot;#008a00&quot;&gt;┅┅ &lt;/font&gt;сбор метрик&lt;br&gt;&lt;font color=&quot;#e3008c&quot;&gt;┅┅ &lt;/font&gt;OAuth Grafana → Keycloak&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;┅┅ &lt;/font&gt;инфраструктура" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#ffffff;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="10" y="880" width="220" height="190" as="geometry" />
+        <mxCell id="m_legend" value="&lt;b&gt;Связи&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#d6001c&quot;&gt;━━ &lt;/font&gt;внешний трафик&lt;br&gt;&lt;font color=&quot;#ff8000&quot;&gt;━━ &lt;/font&gt;Angie → бэкенд&lt;br&gt;&lt;font color=&quot;#0050ef&quot;&gt;━━ &lt;/font&gt;базы данных&lt;br&gt;&lt;font color=&quot;#7f00ff&quot;&gt;━━ &lt;/font&gt;кластер Keycloak (JGroups)&lt;br&gt;&lt;font color=&quot;#008a00&quot;&gt;┅┅ &lt;/font&gt;сбор метрик&lt;br&gt;&lt;font color=&quot;#e3008c&quot;&gt;┅┅ &lt;/font&gt;OAuth Grafana → Keycloak&lt;br&gt;&lt;font color=&quot;#666666&quot;&gt;┅┅ &lt;/font&gt;инфраструктура&lt;br&gt;&lt;font color=&quot;#00a3a3&quot;&gt;━━ &lt;/font&gt;VPN и управление (Ansible)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#ffffff;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="10" y="1180" width="220" height="215" as="geometry" />
         </mxCell>
-        <mxCell id="m_note" value="&lt;b&gt;Адреса&lt;/b&gt; (group_vars/all/topology.yml)&lt;br&gt;сервис на той же ВМ — 127.0.0.1, на другой — private_ip из inventory.&lt;br&gt;&lt;br&gt;Порт на частном IP публикуется, только если потребитель на другой ВМ; JGroups — всегда.&lt;br&gt;&lt;br&gt;Пример из tfvars:&lt;br&gt;angie: web, test_backends&lt;br&gt;apps-a: wordpress, keycloak_db, keycloak&lt;br&gt;apps-b: keycloak, prometheus, grafana" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="10" y="1100" width="220" height="300" as="geometry" />
+        <mxCell id="m_note" value="&lt;b&gt;Адреса&lt;/b&gt; (group_vars/all/topology.yml)&lt;br&gt;сервис на той же ВМ — 127.0.0.1, на другой — private_ip из inventory.&lt;br&gt;&lt;br&gt;Порт на частном IP публикуется, только если потребитель на другой ВМ; JGroups — всегда.&lt;br&gt;&lt;br&gt;Пример — terraform-multivm.tfvars.sample:&lt;br&gt;jump: vpn&lt;br&gt;angie: web, test_backends&lt;br&gt;apps-a: wordpress, keycloak_db, keycloak&lt;br&gt;apps-b: keycloak, prometheus, grafana" style="rounded=1;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;fillColor=#ffffff;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="10" y="1400" width="220" height="320" as="geometry" />
         </mxCell>
-
-        <!-- ===== Yandex Cloud ===== -->
         <mxCell id="m_yc" value="Yandex Cloud" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=none;strokeColor=#0050a0;dashed=1;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="10" width="2040" height="1520" as="geometry" />
+          <mxGeometry x="240" y="10" width="2040" height="1820" as="geometry" />
         </mxCell>
         <mxCell id="m_s3" value="Object Storage&lt;br&gt;terraform state" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="280" y="40" width="150" height="80" as="geometry" />
@@ -217,121 +213,240 @@
         <mxCell id="m_dns" value="Cloud DNS redtomat.ru&lt;br&gt;все имена → публичный IP ВМ angie" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="480" y="40" width="260" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="m_ip" value="Публичные IP ВМ&lt;br&gt;(динамические или static_ip)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+        <mxCell id="m_ip" value="Публичные IP: только jump и angie&lt;br&gt;(динамические или static_ip)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
           <mxGeometry x="790" y="40" width="210" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="m_sg" value="&lt;b&gt;Security group&lt;/b&gt;&lt;br&gt;снаружи: 22, 80, 443/tcp, 443/udp&lt;br&gt;между ВМ группы: всё" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="260" y="540" width="170" height="100" as="geometry" />
+        <mxCell id="m_sg" value="&lt;b&gt;SG angie-network-public&lt;/b&gt;&lt;br&gt;80, 443/tcp, 443/udp&lt;br&gt;только ВМ web; SSH снаружи нет" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="840" width="170" height="100" as="geometry" />
         </mxCell>
-
-        <mxCell id="m_subnet" value="Подсеть angie-subnet 192.168.10.0/24" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=none;strokeColor=#b85450;dashed=1;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="450" y="170" width="1810" height="1340" as="geometry" />
+        <mxCell id="m_subnet" value="Подсеть angie-subnet 192.168.10.0/24 — SG angie-network-vm: между ВМ всё, out: any; route table 0.0.0.0/0 → NAT-шлюз" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=none;strokeColor=#b85450;dashed=1;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="170" width="1810" height="1640" as="geometry" />
         </mxCell>
-
-        <!-- ===== ВМ angie ===== -->
-        <mxCell id="m_vm_angie" value="ВМ angie — 192.168.10.19 — группы web, test_backends" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="480" y="220" width="560" height="1270" as="geometry" />
+        <mxCell id="m_vm_angie" value="ВМ angie — 192.168.10.18 + публичный IP — группы web, test_backends" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="520" width="560" height="1270" as="geometry" />
         </mxCell>
         <mxCell id="m_static" value="static.* → /var/www/static&lt;br&gt;angie.*/console/ → angie-console-light" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="510" y="270" width="500" height="60" as="geometry" />
+          <mxGeometry x="510" y="570" width="500" height="60" as="geometry" />
         </mxCell>
         <mxCell id="m_angie" value="&lt;b&gt;Angie&lt;/b&gt; (профиль AppArmor angie)&lt;br&gt;:80, :443 tcp/udp, SAN site_rsa + site_ecdsa&lt;br&gt;upstream'ы — по частным IP других ВМ (topology.yml)&lt;br&gt;daily.*, auth.*, grafana.*, /prometheus, angie-backend.*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=8;" vertex="1" parent="1">
-          <mxGeometry x="510" y="420" width="500" height="160" as="geometry" />
+          <mxGeometry x="510" y="720" width="500" height="160" as="geometry" />
         </mxCell>
         <mxCell id="m_tb" value="pods test-backend-1..4&lt;br&gt;127.0.0.1:9001-9004 (Angie на этой же ВМ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="510" y="1140" width="500" height="70" as="geometry" />
+          <mxGeometry x="510" y="1440" width="500" height="70" as="geometry" />
         </mxCell>
-        <mxCell id="m_exp_angie" value="&lt;b&gt;цели Prometheus&lt;/b&gt; (127.0.0.1 + 192.168.10.19)&lt;br&gt;node_exporter :9100, podman-exporter :9882,&lt;br&gt;Angie /metrics :8079 (allow только хосты prometheus)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="510" y="1310" width="500" height="80" as="geometry" />
+        <mxCell id="m_exp_angie" value="&lt;b&gt;цели Prometheus&lt;/b&gt; (127.0.0.1 + 192.168.10.18)&lt;br&gt;node_exporter :9100, podman-exporter :9882,&lt;br&gt;Angie /metrics :8079 (allow только хосты prometheus)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="510" y="1610" width="500" height="80" as="geometry" />
         </mxCell>
-
-        <!-- ===== ВМ apps-a ===== -->
-        <mxCell id="m_vm_a" value="ВМ apps-a — 192.168.10.15 — группы wordpress, keycloak_db, keycloak" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="220" width="560" height="1270" as="geometry" />
+        <mxCell id="m_vm_a" value="ВМ apps-a — 192.168.10.16, nat = false — группы wordpress, keycloak_db, keycloak" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="520" width="560" height="1270" as="geometry" />
         </mxCell>
         <mxCell id="m_pod_wp" value="pod wordpress" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1110" y="270" width="500" height="200" as="geometry" />
+          <mxGeometry x="1110" y="570" width="500" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="m_wp" value="wordpress&lt;br&gt;127.0.0.1 +&lt;br&gt;192.168.10.15:8090" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1125" y="320" width="140" height="70" as="geometry" />
+        <mxCell id="m_wp" value="wordpress&lt;br&gt;127.0.0.1 +&lt;br&gt;192.168.10.16:8090" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="620" width="140" height="70" as="geometry" />
         </mxCell>
         <mxCell id="m_mysql" value="MySQL 8.4&lt;br&gt;только в pod'е" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1300" y="310" width="120" height="90" as="geometry" />
+          <mxGeometry x="1300" y="610" width="120" height="90" as="geometry" />
         </mxCell>
         <mxCell id="m_mexp" value="mysqld_exporter&lt;br&gt;:9104" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1460" y="320" width="130" height="70" as="geometry" />
+          <mxGeometry x="1460" y="620" width="130" height="70" as="geometry" />
         </mxCell>
-
         <mxCell id="m_net_a" value="сеть systemd-keycloak (своя на каждой ВМ)" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;dashed=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1110" y="560" width="500" height="330" as="geometry" />
+          <mxGeometry x="1110" y="860" width="500" height="330" as="geometry" />
         </mxCell>
-        <mxCell id="m_pg" value="keycloak-postgres&lt;br&gt;PostgreSQL 18&lt;br&gt;127.0.0.1 +&lt;br&gt;192.168.10.15:5432" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="600" width="190" height="110" as="geometry" />
+        <mxCell id="m_pg" value="keycloak-postgres&lt;br&gt;PostgreSQL 18&lt;br&gt;127.0.0.1 +&lt;br&gt;192.168.10.16:5432" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=10;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="900" width="190" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="m_kc1" value="&lt;b&gt;keycloak-1&lt;/b&gt; --import-realm&lt;br&gt;http 192.168.10.15:8081&lt;br&gt;mgmt :9011&lt;br&gt;JGroups 192.168.10.15:7801" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1130" y="760" width="220" height="90" as="geometry" />
+        <mxCell id="m_kc1" value="&lt;b&gt;keycloak-1&lt;/b&gt; --import-realm&lt;br&gt;http 192.168.10.16:8081&lt;br&gt;mgmt :9011&lt;br&gt;JGroups 192.168.10.16:7801" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="1060" width="220" height="90" as="geometry" />
         </mxCell>
-
-        <mxCell id="m_exp_a" value="&lt;b&gt;цели Prometheus&lt;/b&gt; (127.0.0.1 + 192.168.10.15)&lt;br&gt;node_exporter :9100, podman-exporter :9882,&lt;br&gt;mysqld_exporter :9104, keycloak-1 mgmt :9011" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1110" y="1310" width="500" height="80" as="geometry" />
+        <mxCell id="m_exp_a" value="&lt;b&gt;цели Prometheus&lt;/b&gt; (127.0.0.1 + 192.168.10.16)&lt;br&gt;node_exporter :9100, podman-exporter :9882,&lt;br&gt;mysqld_exporter :9104, keycloak-1 mgmt :9011" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="1610" width="500" height="80" as="geometry" />
         </mxCell>
-
-        <!-- ===== ВМ apps-b ===== -->
-        <mxCell id="m_vm_b" value="ВМ apps-b — 192.168.10.10 — группы keycloak, prometheus, grafana" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1680" y="220" width="560" height="1270" as="geometry" />
+        <mxCell id="m_vm_b" value="ВМ apps-b — 192.168.10.17, nat = false — группы keycloak, prometheus, grafana" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1680" y="520" width="560" height="1270" as="geometry" />
         </mxCell>
         <mxCell id="m_net_b" value="сеть systemd-keycloak" style="rounded=1;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;dashed=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1710" y="560" width="500" height="330" as="geometry" />
+          <mxGeometry x="1710" y="860" width="500" height="330" as="geometry" />
         </mxCell>
-        <mxCell id="m_kc2" value="&lt;b&gt;keycloak-2&lt;/b&gt;&lt;br&gt;http 192.168.10.10:8082&lt;br&gt;mgmt :9012&lt;br&gt;JGroups 192.168.10.10:7802" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1730" y="760" width="220" height="90" as="geometry" />
+        <mxCell id="m_kc2" value="&lt;b&gt;keycloak-2&lt;/b&gt;&lt;br&gt;http 192.168.10.17:8082&lt;br&gt;mgmt :9012&lt;br&gt;JGroups 192.168.10.17:7802" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1730" y="1060" width="220" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="m_grafana" value="&lt;b&gt;pod grafana&lt;/b&gt; (hostNetwork)&lt;br&gt;192.168.10.10:3000&lt;br&gt;/etc/hosts: auth.* → 192.168.10.19" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1710" y="990" width="230" height="90" as="geometry" />
+        <mxCell id="m_grafana" value="&lt;b&gt;pod grafana&lt;/b&gt; (hostNetwork)&lt;br&gt;192.168.10.17:3000&lt;br&gt;/etc/hosts: auth.* → 192.168.10.18" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1710" y="1290" width="230" height="90" as="geometry" />
         </mxCell>
-        <mxCell id="m_prom" value="&lt;b&gt;pod prometheus&lt;/b&gt; (hostNetwork)&lt;br&gt;127.0.0.1 + 192.168.10.10:9090&lt;br&gt;цели с трёх ВМ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1980" y="990" width="230" height="90" as="geometry" />
+        <mxCell id="m_prom" value="&lt;b&gt;pod prometheus&lt;/b&gt; (hostNetwork)&lt;br&gt;127.0.0.1 + 192.168.10.17:9090&lt;br&gt;цели с трёх ВМ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1980" y="1290" width="230" height="90" as="geometry" />
         </mxCell>
         <mxCell id="m_exp_b" value="&lt;b&gt;цели Prometheus&lt;/b&gt; (127.0.0.1)&lt;br&gt;node_exporter :9100, podman-exporter :9882,&lt;br&gt;keycloak-2 mgmt :9012" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1710" y="1310" width="500" height="80" as="geometry" />
+          <mxGeometry x="1710" y="1610" width="500" height="80" as="geometry" />
         </mxCell>
-
-        <!-- ===== Внешний трафик (красный) ===== -->
-        <mxCell id="m_e_users" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;" edge="1" parent="1" source="m_users" target="m_sg"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_le" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;exitX=1;exitY=0.5;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_le" target="m_sg"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_sg" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_sg" target="m_angie"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="470" y="590" /><mxPoint x="470" y="500" /></Array></mxGeometry></mxCell>
-
-        <!-- ===== Angie → бэкенды (оранжевый) ===== -->
-        <mxCell id="m_e_static" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="m_angie" target="m_static"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_tb" value="127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="m_angie" target="m_tb"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_wp" value="daily.* → 192.168.10.15:8090" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.15;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_angie" target="m_wp"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1060" y="444" /><mxPoint x="1060" y="355" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_kc1" value="auth.* least_conn + sticky&lt;br&gt;192.168.10.15:8081" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.45;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_angie" target="m_kc1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1070" y="492" /><mxPoint x="1070" y="805" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_kc2" value="auth.* → 192.168.10.10:8082" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.65;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_angie" target="m_kc2"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1050" y="524" /><mxPoint x="1050" y="920" /><mxPoint x="1840" y="920" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_grafana" value="grafana.* → 192.168.10.10:3000" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.8;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_angie" target="m_grafana"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1040" y="548" /><mxPoint x="1040" y="945" /><mxPoint x="1825" y="945" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_prom" value="/prometheus → 192.168.10.10:9090" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.95;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_angie" target="m_prom"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1030" y="572" /><mxPoint x="1030" y="965" /><mxPoint x="2095" y="965" /></Array></mxGeometry></mxCell>
-
-        <!-- ===== Базы данных (синий) ===== -->
-        <mxCell id="m_e_db_wp" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="m_wp" target="m_mysql"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_db_mexp" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="m_mexp" target="m_mysql"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_db_kc1" value="keycloak-postgres:5432" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;fontSize=10;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_kc1" target="m_pg"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1240" y="655" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_db_kc2" value="192.168.10.15:5432" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;fontSize=10;exitX=0;exitY=0.2;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_kc2" target="m_pg"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1495" y="778" /></Array></mxGeometry></mxCell>
-
-        <!-- ===== JGroups (фиолетовый) ===== -->
-        <mxCell id="m_e_jg" value="JGroups 7801 ↔ 7802 по частным IP&lt;br&gt;(cache-embedded-network-external-*)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7f00ff;strokeWidth=2;startArrow=classic;fontSize=10;exitX=1;exitY=0.7;entryX=0;entryY=0.7;" edge="1" parent="1" source="m_kc1" target="m_kc2"><mxGeometry relative="1" as="geometry" /></mxCell>
-
-        <!-- ===== Метрики (зелёный) ===== -->
-        <mxCell id="m_e_ds" value="datasource 127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;fontSize=10;" edge="1" parent="1" source="m_grafana" target="m_prom"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_m_b" value="127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.3;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_b"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_m_a" value="192.168.10.15" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.6;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_a"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2118" y="1270" /><mxPoint x="1360" y="1270" /></Array></mxGeometry></mxCell>
-        <mxCell id="m_e_m_angie" value="192.168.10.19" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.9;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_angie"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="2187" y="1250" /><mxPoint x="760" y="1250" /></Array></mxGeometry></mxCell>
-
-        <!-- ===== OAuth (розовый) ===== -->
-        <mxCell id="m_e_oauth" value="token / userinfo → Angie 192.168.10.19:443" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#e3008c;dashed=1;fontSize=10;exitX=0;exitY=0.7;entryX=0.8;entryY=1;" edge="1" parent="1" source="m_grafana" target="m_angie"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1690" y="1053" /><mxPoint x="1690" y="1100" /><mxPoint x="910" y="1100" /></Array></mxGeometry></mxCell>
-
-        <!-- ===== Инфраструктура (серый) ===== -->
-        <mxCell id="m_e_state" value="state" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;fontSize=10;" edge="1" parent="1" source="m_admin" target="m_s3"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_dns" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;" edge="1" parent="1" source="m_dns" target="m_ip"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="m_e_ip" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_ip" target="m_subnet"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="m_e_users" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;" edge="1" parent="1" source="m_users" target="m_sg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_le" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;exitX=1;exitY=0.5;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_le" target="m_sg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_sg" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d6001c;strokeWidth=2;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_sg" target="m_angie">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="890" />
+              <mxPoint x="470" y="800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_static" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;" edge="1" parent="1" source="m_angie" target="m_static">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_tb" value="127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="m_angie" target="m_tb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_wp" value="daily.* → 192.168.10.16:8090" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.15;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_angie" target="m_wp">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="744" />
+              <mxPoint x="1060" y="655" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_kc1" value="auth.* least_conn + sticky&lt;br&gt;192.168.10.16:8081" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.45;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_angie" target="m_kc1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1070" y="792" />
+              <mxPoint x="1070" y="1105" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_kc2" value="auth.* → 192.168.10.17:8082" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.65;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_angie" target="m_kc2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="824" />
+              <mxPoint x="1050" y="1220" />
+              <mxPoint x="1840" y="1220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_grafana" value="grafana.* → 192.168.10.17:3000" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.8;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_angie" target="m_grafana">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1040" y="848" />
+              <mxPoint x="1040" y="1245" />
+              <mxPoint x="1825" y="1245" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_prom" value="/prometheus → 192.168.10.17:9090" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#ff8000;fontSize=10;exitX=1;exitY=0.95;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_angie" target="m_prom">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1030" y="872" />
+              <mxPoint x="1030" y="1265" />
+              <mxPoint x="2095" y="1265" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_db_wp" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="m_wp" target="m_mysql">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_db_mexp" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;" edge="1" parent="1" source="m_mexp" target="m_mysql">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_db_kc1" value="keycloak-postgres:5432" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;fontSize=10;exitX=0.5;exitY=0;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_kc1" target="m_pg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="955" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_db_kc2" value="192.168.10.16:5432" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#0050ef;fontSize=10;exitX=0;exitY=0.2;entryX=0.5;entryY=1;" edge="1" parent="1" source="m_kc2" target="m_pg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1495" y="1078" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_jg" value="JGroups 7801 ↔ 7802 по частным IP&lt;br&gt;(cache-embedded-network-external-*)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#7f00ff;strokeWidth=2;startArrow=classic;fontSize=10;exitX=1;exitY=0.7;entryX=0;entryY=0.7;" edge="1" parent="1" source="m_kc1" target="m_kc2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_ds" value="datasource 127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;fontSize=10;" edge="1" parent="1" source="m_grafana" target="m_prom">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_m_b" value="127.0.0.1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.3;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_m_a" value="192.168.10.16" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.6;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_a">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2118" y="1570" />
+              <mxPoint x="1360" y="1570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_m_angie" value="192.168.10.18" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#008a00;dashed=1;fontSize=10;exitX=0.9;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_prom" target="m_exp_angie">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2187" y="1550" />
+              <mxPoint x="760" y="1550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_oauth" value="token / userinfo → Angie 192.168.10.18:443" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#e3008c;dashed=1;fontSize=10;exitX=0;exitY=0.7;entryX=0.8;entryY=1;" edge="1" parent="1" source="m_grafana" target="m_angie">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1690" y="1353" />
+              <mxPoint x="1690" y="1400" />
+              <mxPoint x="910" y="1400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m_e_state" value="state" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;fontSize=10;" edge="1" parent="1" source="m_admin" target="m_s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_dns" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;" edge="1" parent="1" source="m_dns" target="m_ip">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_ip" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="m_ip" target="m_subnet">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_nat" value="&lt;b&gt;NAT-шлюз&lt;/b&gt; vm-egress&lt;br&gt;выход в интернет ВМ без публичного IP&lt;br&gt;(apt, образы контейнеров)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="40" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="m_vm_jump" value="ВМ jump — 192.168.10.7 + публичный IP — группа vpn" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;align=left;spacingLeft=10;fillColor=#fafafa;strokeColor=#333333;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="220" width="560" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="m_wg" value="&lt;b&gt;WireGuard&lt;/b&gt; wg0 10.99.0.1/24, :51820/udp&lt;br&gt;клиент 10.99.0.2 → AllowedIPs 10.99.0.0/24, 192.168.10.0/24&lt;br&gt;masquerade 10.99.0.0/24 → 192.168.10.7&lt;br&gt;ключи /etc/wireguard, nft-правила в PostUp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5f5f5;strokeColor=#00a3a3;align=left;spacingLeft=8;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="500" y="260" width="520" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m_jump_host" value="&lt;b&gt;Хост&lt;/b&gt;: sshd только по ключу, root запрещён; fail2ban&lt;br&gt;node_exporter 192.168.10.7:9100 — цель Prometheus" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="380" width="460" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="m_sg_jump" value="&lt;b&gt;SG angie-network-ssh + -vpn&lt;/b&gt;&lt;br&gt;22/tcp из ssh_allowed_cidrs&lt;br&gt;51820/udp&lt;br&gt;только ВМ jump" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="250" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="m_tunnel_note" value="&lt;b&gt;Управление&lt;/b&gt;&lt;br&gt;1. vpn.yml по публичному IP jump&lt;br&gt;2. подключить wg-jump.conf (wg-quick или nmcli)&lt;br&gt;3. site.yml по частным IP через туннель&lt;br&gt;&lt;br&gt;Снаружи у angie открыт только веб, у apps-* публичных IP нет." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#00a3a3;align=left;verticalAlign=top;spacingLeft=6;spacingTop=4;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="10" y="380" width="220" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_vpn" value="VPN 51820/udp,&lt;br&gt;SSH 22 (vpn.yml)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#00a3a3;strokeWidth=2;exitX=0.5;exitY=1;entryX=0;entryY=0.5;fontSize=10;" edge="1" parent="1" source="m_admin" target="m_sg_jump">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_vpn2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#00a3a3;strokeWidth=2;entryX=0;entryY=0.5;" edge="1" parent="1" source="m_sg_jump" target="m_wg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_mgmt_angie" value="SSH по частным IP" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#00a3a3;dashed=1;fontSize=10;exitX=0.05;exitY=1;entryX=0.08;entryY=0;" edge="1" parent="1" source="m_wg" target="m_vm_angie">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_mgmt_a" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#00a3a3;dashed=1;exitX=1;exitY=0.3;entryX=0.3;entryY=0;" edge="1" parent="1" source="m_wg" target="m_vm_a">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_mgmt_b" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#00a3a3;dashed=1;exitX=1;exitY=0.7;entryX=0.3;entryY=0;" edge="1" parent="1" source="m_wg" target="m_vm_b">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_nat_a" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;exitX=0.8;exitY=0;entryX=0.3;entryY=1;" edge="1" parent="1" source="m_vm_a" target="m_nat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m_e_nat_b" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;dashed=1;exitX=0.8;exitY=0;entryX=0.8;entryY=1;" edge="1" parent="1" source="m_vm_b" target="m_nat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

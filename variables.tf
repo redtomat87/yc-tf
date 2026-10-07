@@ -55,6 +55,12 @@ variable "public_udp_ports" {
   default     = [443]
 }
 
+variable "vpn_port" {
+  description = "WireGuard UDP port on the jump host (the VM with the vpn Ansible group)"
+  type        = number
+  default     = 51820
+}
+
 variable "networks" {
   type = map(object({
     subnets = map(object({
@@ -93,6 +99,30 @@ variable "vms" {
       for vm in var.vms : [for group in vm.ansible_groups : can(regex("^[a-z_][a-z0-9_]*$", group))]
     ]))
     error_message = "ansible_groups entries must be valid Ansible group names: lowercase letters, digits and underscores."
+  }
+
+  validation {
+    condition     = length([for vm in var.vms : vm if contains(vm.ansible_groups, "vpn")]) <= 1
+    error_message = "Only one VM may have the vpn group (jump host)."
+  }
+
+  validation {
+    condition     = alltrue([for vm in var.vms : vm.nat if contains(vm.ansible_groups, "vpn")])
+    error_message = "The jump host (vpn group) needs nat = true."
+  }
+
+  # Через туннель видны только ВМ сети jump-хоста.
+  validation {
+    condition = alltrue([
+      for jump in var.vms : alltrue([for vm in var.vms : vm.network_name == jump.network_name])
+      if contains(jump.ansible_groups, "vpn")
+    ])
+    error_message = "With a jump host (vpn group) all VMs must be in its network."
+  }
+
+  validation {
+    condition     = alltrue([for vm in var.vms : vm.nat || anytrue([for jump in var.vms : contains(jump.ansible_groups, "vpn")])])
+    error_message = "A VM with nat = false is reachable only through a jump host: give one VM the vpn group."
   }
 
   validation {

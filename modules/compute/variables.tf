@@ -34,6 +34,6 @@ variable "subnet_ids" {
 }
 
 variable "security_group_ids" {
-  description = "Security group id per network name"
-  type        = map(string)
+  description = "Security group ids per VM name"
+  type        = map(list(string))
 }

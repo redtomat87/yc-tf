@@ -30,3 +30,12 @@ variable "nat_gateway_networks" {
   description = "Networks with VMs that have no public IP"
   type        = set(string)
 }
+
+variable "vpn_networks" {
+  description = "Networks with a jump host"
+  type        = set(string)
+}
+
+variable "vpn_port" {
+  type = number
+}

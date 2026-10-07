@@ -55,13 +55,34 @@ resource "yandex_vpc_route_table" "egress" {
   }
 }
 
-# Снаружи открыты только SSH и веб. Всё остальное (контейнеры, экспортеры)
-# слушает 127.0.0.1 и наружу не попадает, даже если ошибиться в конфиге ВМ.
+# Группы назначаются ВМ по роли (main.tf): эта — всем, остальные — только нужным.
+# Контейнеры и экспортеры слушают 127.0.0.1 или частный IP, снаружи они закрыты.
 resource "yandex_vpc_security_group" "vm" {
   for_each = var.networks
 
   name        = "${each.key}-vm"
-  description = "Public ingress for VMs in ${each.key}"
+  description = "Traffic between VMs of ${each.key} and outbound"
+  network_id  = yandex_vpc_network.vm-network[each.key].id
+  labels      = var.common_labels
+
+  ingress {
+    description       = "traffic between VMs of this group"
+    protocol          = "ANY"
+    predefined_target = "self_security_group"
+  }
+
+  egress {
+    description    = "any outbound"
+    protocol       = "ANY"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "yandex_vpc_security_group" "ssh" {
+  for_each = var.networks
+
+  name        = "${each.key}-ssh"
+  description = "SSH from ssh_allowed_cidrs"
   network_id  = yandex_vpc_network.vm-network[each.key].id
   labels      = var.common_labels
 
@@ -71,6 +92,15 @@ resource "yandex_vpc_security_group" "vm" {
     port           = 22
     v4_cidr_blocks = var.ssh_allowed_cidrs
   }
+}
+
+resource "yandex_vpc_security_group" "public" {
+  for_each = var.networks
+
+  name        = "${each.key}-public"
+  description = "Public web ports"
+  network_id  = yandex_vpc_network.vm-network[each.key].id
+  labels      = var.common_labels
 
   dynamic "ingress" {
     for_each = var.public_tcp_ports
@@ -91,16 +121,21 @@ resource "yandex_vpc_security_group" "vm" {
       v4_cidr_blocks = ["0.0.0.0/0"]
     }
   }
+}
+
+# WireGuard не отвечает на пакеты без верного ключа, поэтому порт открыт всем.
+resource "yandex_vpc_security_group" "vpn" {
+  for_each = var.vpn_networks
+
+  name        = "${each.key}-vpn"
+  description = "WireGuard on the jump host"
+  network_id  = yandex_vpc_network.vm-network[each.key].id
+  labels      = var.common_labels
 
   ingress {
-    description       = "traffic between VMs of this group"
-    protocol          = "ANY"
-    predefined_target = "self_security_group"
-  }
-
-  egress {
-    description    = "any outbound"
-    protocol       = "ANY"
+    description    = "wireguard"
+    protocol       = "UDP"
+    port           = var.vpn_port
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -113,6 +148,13 @@ output "subnet_ids" {
 }
 
 output "security_group_ids" {
-  description = "Security group id per network name"
-  value       = { for name, sg in yandex_vpc_security_group.vm : name => sg.id }
+  description = "Security group ids per network name: internal, ssh, public, vpn (null without a jump host)"
+  value = {
+    for name, sg in yandex_vpc_security_group.vm : name => {
+      internal = sg.id
+      ssh      = yandex_vpc_security_group.ssh[name].id
+      public   = yandex_vpc_security_group.public[name].id
+      vpn      = try(yandex_vpc_security_group.vpn[name].id, null)
+    }
+  }
 }

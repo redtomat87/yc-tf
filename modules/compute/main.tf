@@ -77,7 +77,7 @@ resource "yandex_compute_instance" "vm" {
     subnet_id          = var.subnet_ids["${each.value.network_name}-${each.value.subnet_name}"]
     nat                = each.value.nat
     nat_ip_address     = each.value.static_ip ? yandex_vpc_address.static[each.key].external_ipv4_address[0].address : null
-    security_group_ids = [var.security_group_ids[each.value.network_name]]
+    security_group_ids = var.security_group_ids[each.key]
   }
 
   metadata = {
